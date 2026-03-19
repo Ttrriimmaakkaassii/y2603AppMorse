@@ -228,6 +228,31 @@ export function playLetterMorse(morse, onSymbol, onEnd) {
   };
 }
 
+// Live key tone — plays continuously while the morse key is held down.
+// Call stop() on release to cut the tone cleanly.
+export function startKeyTone() {
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const osc  = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.frequency.value = FREQUENCY;
+  osc.type = 'sine';
+  const now = ctx.currentTime;
+  gain.gain.setValueAtTime(0, now);
+  gain.gain.linearRampToValueAtTime(0.7, now + 0.006);
+  osc.start(now);
+  return {
+    stop: () => {
+      const t = ctx.currentTime;
+      gain.gain.setValueAtTime(gain.gain.value, t);
+      gain.gain.linearRampToValueAtTime(0, t + 0.008);
+      osc.stop(t + 0.015);
+      setTimeout(() => ctx.close(), 80);
+    },
+  };
+}
+
 function audioBufferToWav(buffer) {
   const numChannels = 1;
   const sampleRate = buffer.sampleRate;

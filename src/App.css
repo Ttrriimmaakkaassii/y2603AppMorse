@@ -537,3 +537,84 @@ textarea::placeholder { color: #334155; }
   border-radius: 8px;
 }
 .btn-next:hover { background: #1d6b4a; }
+
+/* ── Mode toggle (Normal / Reverse) ── */
+.mode-toggle {
+  display: flex;
+  background: #12121c;
+  border: 1px solid #2e3048;
+  border-radius: 10px;
+  padding: 3px;
+  gap: 3px;
+  align-self: center;
+  width: 100%;
+  max-width: 340px;
+  box-sizing: border-box;
+}
+.mode-btn {
+  flex: 1;
+  padding: 9px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #475569;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s;
+  font-family: 'Courier New', monospace;
+  letter-spacing: 0.3px;
+}
+.mode-btn.mode-active {
+  background: #1a1a2e;
+  color: #7ee8a2;
+  box-shadow: 0 0 12px rgba(126,232,162,0.12);
+}
+
+/* ── Reverse mode symbol display ── */
+.ti-playing {
+  animation: beep-ring 0.35s ease-out infinite;
+  text-shadow: 0 0 12px currentColor;
+}
+.ti-done { opacity: 0.4; }
+
+/* ── Reverse mode letter picker ── */
+.rev-picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(46px, 1fr));
+  gap: 7px;
+  width: 100%;
+  max-width: 400px;
+}
+.rev-letter-btn {
+  background: #1a1a24;
+  border: 1px solid #2e3048;
+  color: #94a3b8;
+  border-radius: 8px;
+  padding: 10px 4px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  font-family: 'Courier New', monospace;
+  cursor: pointer;
+  transition: all 0.14s;
+}
+.rev-letter-btn:hover:not(:disabled) {
+  background: #1e2030;
+  border-color: #7ee8a2;
+  color: #e2e8f0;
+}
+.rev-letter-btn:disabled { cursor: default; }
+.rev-letter-btn.rev-correct {
+  background: rgba(126,232,162,0.12);
+  border-color: #7ee8a2;
+  color: #7ee8a2;
+  box-shadow: 0 0 14px rgba(126,232,162,0.3);
+}
+.rev-letter-btn.rev-wrong {
+  background: rgba(248,113,113,0.1);
+  border-color: #f87171;
+  color: #f87171;
+}
+.rev-letter-btn.rev-dim {
+  opacity: 0.28;
+}
