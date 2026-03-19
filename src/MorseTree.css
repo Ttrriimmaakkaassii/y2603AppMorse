@@ -1,21 +1,81 @@
 .tree-wrap {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   width: 100%;
 }
 
+/* ── Zoom controls ── */
+.zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  justify-content: flex-end;
+}
+
+.zoom-btn {
+  background: #1a1a2e;
+  border: 1px solid #2e3048;
+  color: #e2e8f0;
+  width: 32px;
+  height: 32px;
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 17px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.zoom-btn:hover,
+.zoom-btn:active {
+  background: #2d3a5a;
+}
+
+.zoom-fit {
+  font-size: 14px;
+}
+
+.zoom-reset {
+  background: #1a1a2e;
+  border: 1px solid #2e3048;
+  color: #94a3b8;
+  padding: 2px 10px;
+  height: 32px;
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: 'Courier New', monospace;
+  min-width: 46px;
+  transition: background 0.15s;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.zoom-reset:hover,
+.zoom-reset:active {
+  background: #2d3a5a;
+}
+
+/* ── Scrollable container ── */
 .tree-scroll {
   width: 100%;
-  overflow-x: auto;
+  max-height: 420px;
+  overflow: auto;
   -webkit-overflow-scrolling: touch;
+  border-radius: 8px;
+  background: #0d0d18;
+  padding: 4px;
 }
 
 .tree-svg {
   display: block;
-  width: 960px;
-  height: 330px;
-  min-width: 960px;
+  /* width + height set dynamically via React */
 }
 
 /* ── Edges ── */
@@ -89,7 +149,7 @@
 /* ── Bottom legend ── */
 .tree-legend {
   margin: 6px 0 0;
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   color: #475569;
   text-align: center;
 }

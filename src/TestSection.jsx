@@ -1,21 +1,22 @@
 import { useState, useRef, useEffect } from 'react';
 import { MORSE_CODE } from './morseCode';
 import { playLetterMorse } from './audioEngine';
+import MorseTree from './MorseTree';
 
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
-const HOLD_MS = 350;          // hold longer than this → dash
-const AUTO_CHECK_MS = 1300;   // silence after last symbol → auto-check
+const HOLD_MS       = 350;   // hold longer than this → dash
+const AUTO_CHECK_MS = 1300;  // silence after last symbol → auto-check
 
 function randomLetter() {
   return LETTERS[Math.floor(Math.random() * LETTERS.length)];
 }
 
 export default function TestSection() {
-  const [letter, setLetter]       = useState(randomLetter);
-  const [input, setInput]         = useState('');    // string of '.' and '-'
-  const [holding, setHolding]     = useState(false);
-  const [feedback, setFeedback]   = useState(null);  // null | 'correct' | 'wrong'
-  const [score, setScore]         = useState({ ok: 0, total: 0 });
+  const [letter, setLetter]         = useState(randomLetter);
+  const [input, setInput]           = useState('');   // string of '.' and '-'
+  const [holding, setHolding]       = useState(false);
+  const [feedback, setFeedback]     = useState(null); // null | 'correct' | 'wrong'
+  const [score, setScore]           = useState({ ok: 0, total: 0 });
   const [playingSym, setPlayingSym] = useState(-1);
 
   // refs so timeouts always see latest values
@@ -26,7 +27,7 @@ export default function TestSection() {
   const autoTimer   = useRef(null);
   const playerRef   = useRef(null);
 
-  useEffect(() => { letterRef.current = letter; }, [letter]);
+  useEffect(() => { letterRef.current = letter; },   [letter]);
   useEffect(() => { feedbackRef.current = feedback; }, [feedback]);
 
   function addSym(sym) {
@@ -107,6 +108,17 @@ export default function TestSection() {
 
   const correctMorse = MORSE_CODE[letter];
 
+  // Compute what the flowchart should highlight:
+  // - No feedback + entering: show the user's traced path
+  // - Feedback shown: show the correct answer path (animated during playAnswer)
+  const treeMorse = feedback
+    ? correctMorse
+    : (input || null);
+
+  const treeStep = feedback
+    ? (playingSym >= 0 ? playingSym + 1 : correctMorse.length + 1) // full or animating
+    : input.length; // how many symbols user has entered
+
   return (
     <div className="test-section">
 
@@ -185,6 +197,24 @@ export default function TestSection() {
           </div>
         </div>
       )}
+
+      {/* Morse flowchart — always visible */}
+      <section className="card tree-card" style={{ marginTop: '16px' }}>
+        <label>
+          Morse Flowchart
+          {feedback && (
+            <span style={{ marginLeft: 8, color: feedback === 'correct' ? '#7ee8a2' : '#60a5fa', fontWeight: 700 }}>
+              — {letter} ({correctMorse.split('').map(s => s === '.' ? '·' : '−').join('')})
+            </span>
+          )}
+          {!feedback && input && (
+            <span style={{ marginLeft: 8, color: '#94a3b8', fontWeight: 400, fontSize: '0.8em' }}>
+              your path so far
+            </span>
+          )}
+        </label>
+        <MorseTree activeMorse={treeMorse} currentStep={treeStep} />
+      </section>
 
     </div>
   );
