@@ -228,6 +228,51 @@ export function playLetterMorse(morse, onSymbol, onEnd) {
   };
 }
 
+// Play N dot-beeps sequentially; fires onDot(index) per beep, onEnd when done.
+export function playDotSequence(count, onDot, onEnd) {
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const ctxStart = ctx.currentTime + 0.05;
+  const START_MS = 50;
+  let timeMs = 0;
+  let stopped = false;
+  const timers = [];
+  const fire = (fn, ms) => timers.push(setTimeout(() => { if (!stopped) fn(); }, ms));
+
+  for (let i = 0; i < count; i++) {
+    const osc  = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.frequency.value = FREQUENCY; osc.type = 'sine';
+    const s = ctxStart + timeMs / 1000, d = DOT_DURATION / 1000;
+    gain.gain.setValueAtTime(0, s);
+    gain.gain.linearRampToValueAtTime(0.7, s + 0.005);
+    gain.gain.setValueAtTime(0.7, s + d - 0.005);
+    gain.gain.linearRampToValueAtTime(0, s + d);
+    osc.start(s); osc.stop(s + d + 0.01);
+    const ci = i;
+    fire(() => onDot?.(ci), START_MS + timeMs);
+    timeMs += DOT_DURATION + SYMBOL_GAP;
+  }
+  fire(() => { ctx.close(); onEnd?.(); }, START_MS + timeMs + 200);
+  return { stop: () => { stopped = true; timers.forEach(clearTimeout); ctx.close(); } };
+}
+
+// Play a single instant dot-beep (tap feedback in test mode).
+export function playOneDot() {
+  const ctx  = new (window.AudioContext || window.webkitAudioContext)();
+  const osc  = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.connect(gain); gain.connect(ctx.destination);
+  osc.frequency.value = FREQUENCY; osc.type = 'sine';
+  const s = ctx.currentTime, d = DOT_DURATION / 1000;
+  gain.gain.setValueAtTime(0, s);
+  gain.gain.linearRampToValueAtTime(0.65, s + 0.005);
+  gain.gain.setValueAtTime(0.65, s + d - 0.005);
+  gain.gain.linearRampToValueAtTime(0, s + d);
+  osc.start(s); osc.stop(s + d + 0.01);
+  setTimeout(() => ctx.close(), DOT_DURATION + 80);
+}
+
 // Live key tone — plays continuously while the morse key is held down.
 // Call stop() on release to cut the tone cleanly.
 export function startKeyTone() {

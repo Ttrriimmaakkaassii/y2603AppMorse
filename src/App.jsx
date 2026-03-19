@@ -5,12 +5,14 @@ import MorseTree from './MorseTree';
 import AlphabetPanel from './AlphabetPanel';
 import LearnSection from './LearnSection';
 import TestSection from './TestSection';
+import NumberSection from './NumberSection';
 import './App.css';
 
 const TABS = [
   { id: 'converter', label: '⌨ Converter' },
   { id: 'learn',     label: 'ABC Learn' },
   { id: 'test',      label: '· − Test Me' },
+  { id: 'numbers',   label: '🔢 Numbers' },
 ];
 
 export default function App() {
@@ -214,6 +216,9 @@ export default function App() {
 
         {/* ── TEST ME TAB ── */}
         {tab === 'test' && <TestSection />}
+
+        {/* ── NUMBERS TAB ── */}
+        {tab === 'numbers' && <NumberSection />}
 
       </main>
 

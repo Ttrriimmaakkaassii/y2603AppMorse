@@ -618,3 +618,168 @@ textarea::placeholder { color: #334155; }
 .rev-letter-btn.rev-dim {
   opacity: 0.28;
 }
+
+/* ════════════════════════════════
+   NUMBER SECTION
+   ════════════════════════════════ */
+
+.number-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
+}
+
+/* ── Number LED dot (shared by chart + cards) ── */
+.num-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #1c2a1c;
+  border: 1px solid rgba(45,74,45,0.4);
+  transition: background 0.1s, box-shadow 0.1s;
+  flex-shrink: 0;
+}
+.num-dot.nd-on {
+  background: #7ee8a2;
+  border-color: #7ee8a2;
+  box-shadow: 0 0 8px rgba(126,232,162,0.9);
+}
+
+/* ── NumberChart ── */
+.num-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 100%;
+}
+
+.num-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  transition: background 0.15s, border-color 0.15s;
+  min-height: 36px;
+}
+.num-row-clickable { cursor: pointer; }
+.num-row-clickable:hover { background: #1a1a2e; }
+.num-row.num-row-active {
+  background: rgba(126,232,162,0.06);
+  border-color: rgba(126,232,162,0.28);
+  box-shadow: 0 0 16px rgba(126,232,162,0.1);
+}
+
+.num-row-digit {
+  font-size: 1.25rem;
+  font-weight: 900;
+  font-family: 'Courier New', monospace;
+  color: #64748b;
+  width: 22px;
+  text-align: center;
+  flex-shrink: 0;
+  transition: color 0.15s;
+}
+.num-row-active .num-row-digit { color: #7ee8a2; }
+
+.num-row-dots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+  flex: 1;
+}
+
+.num-row-count {
+  font-size: 0.7rem;
+  color: #334155;
+  font-family: 'Courier New', monospace;
+  width: 24px;
+  text-align: right;
+  flex-shrink: 0;
+}
+.num-row-active .num-row-count { color: #5d9e7a; }
+
+/* ── NumberLearn grid ── */
+.num-learn {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+  gap: 0;
+}
+
+.num-learn-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: 10px;
+}
+
+.num-card {
+  background: #1a1a24;
+  border: 1px solid #2e3048;
+  border-radius: 10px;
+  padding: 14px 8px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: border-color 0.18s, background 0.18s, box-shadow 0.18s;
+  font-family: inherit;
+}
+.num-card:hover { border-color: #3d5a4a; background: #1e2030; }
+.num-card.num-card-active {
+  border-color: #7ee8a2;
+  background: rgba(126,232,162,0.06);
+  box-shadow: 0 0 22px rgba(126,232,162,0.22);
+}
+
+.num-card-digit {
+  font-size: 2rem;
+  font-weight: 900;
+  font-family: 'Courier New', monospace;
+  color: #e2e8f0;
+  line-height: 1;
+}
+.num-card-active .num-card-digit {
+  color: #7ee8a2;
+  text-shadow: 0 0 14px rgba(126,232,162,0.55);
+}
+
+.num-card-dots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  justify-content: center;
+  min-height: 10px;
+}
+
+.num-card-label {
+  font-size: 0.68rem;
+  font-family: 'Courier New', monospace;
+  color: #475569;
+  letter-spacing: 0.3px;
+}
+.num-card-active .num-card-label { color: #94a3b8; }
+
+/* ── NumberTest ── */
+.num-test {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding: 4px 0 24px;
+  width: 100%;
+}
+
+.num-tap-guess {
+  font-size: 1.1rem;
+  font-family: 'Courier New', monospace;
+  color: #94a3b8;
+  letter-spacing: 1px;
+}
