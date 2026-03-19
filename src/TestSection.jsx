@@ -52,9 +52,20 @@ export default function TestSection() {
     setScore(s => ({ ok: s.ok + (isOk ? 1 : 0), total: s.total + 1 }));
   }
 
+  function resetAttempt() {
+    clearTimeout(autoTimer.current);
+    playerRef.current?.stop();
+    inputRef.current = '';
+    setInput('');
+    feedbackRef.current = null;
+    setFeedback(null);
+    setPlayingSym(-1);
+  }
+
   function handleDown(e) {
     e.preventDefault();
-    if (feedbackRef.current) return;
+    // If feedback is showing, pressing the key starts a fresh attempt on the same letter
+    if (feedbackRef.current) resetAttempt();
     clearTimeout(autoTimer.current);
     holdRef.current = Date.now();
     setHolding(true);
@@ -62,7 +73,7 @@ export default function TestSection() {
 
   function handleUp(e) {
     e.preventDefault();
-    if (!holdRef.current || feedbackRef.current) return;
+    if (!holdRef.current) return;
     const dur = Date.now() - holdRef.current;
     holdRef.current = null;
     setHolding(false);
@@ -142,21 +153,21 @@ export default function TestSection() {
         }
       </div>
 
-      {/* Morse key — tap=dot, hold=dash */}
-      {!feedback && (
-        <div className="test-controls">
-          <button
-            className={`morse-key ${holding ? 'key-held' : ''}`}
-            onPointerDown={handleDown}
-            onPointerUp={handleUp}
-            onPointerLeave={handleCancel}
-            onPointerCancel={handleCancel}
-            onContextMenu={e => e.preventDefault()}
-          >
-            <span className="key-icon">{holding ? '−' : '·'}</span>
-            <span className="key-label">tap · &nbsp; hold −</span>
-          </button>
+      {/* Morse key — always visible */}
+      <div className="test-controls">
+        <button
+          className={`morse-key ${holding ? 'key-held' : ''}`}
+          onPointerDown={handleDown}
+          onPointerUp={handleUp}
+          onPointerLeave={handleCancel}
+          onPointerCancel={handleCancel}
+          onContextMenu={e => e.preventDefault()}
+        >
+          <span className="key-icon">{holding ? '−' : '·'}</span>
+          <span className="key-label">tap · &nbsp; hold −</span>
+        </button>
 
+        {!feedback && (
           <div className="test-btn-row">
             {input && (
               <button className="btn btn-sm btn-clear-sm" onClick={clearInput}>⌫ Clear</button>
@@ -165,8 +176,8 @@ export default function TestSection() {
               <button className="btn btn-sm btn-check" onClick={doCheck}>✓ Check</button>
             )}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Feedback */}
       {feedback && (
