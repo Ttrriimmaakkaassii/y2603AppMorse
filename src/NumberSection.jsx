@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import NumberLearn from './NumberLearn';
-import NumberPad   from './NumberPad';
+import NumberLearn   from './NumberLearn';
+import NumberPad     from './NumberPad';
+import ErrorBoundary from './ErrorBoundary';
 
 export default function NumberSection() {
   const [view, setView] = useState('learn');
@@ -24,7 +25,7 @@ export default function NumberSection() {
 
       {view === 'learn'
         ? <NumberLearn key="learn" />
-        : <NumberPad   key="pad"   />
+        : <ErrorBoundary key="pad-boundary"><NumberPad key="pad" /></ErrorBoundary>
       }
     </div>
   );
