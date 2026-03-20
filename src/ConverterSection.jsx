@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { textToMorseDetailed } from './morseCode';
 import { playMorseConfigured, renderMorseToWav } from './audioEngine';
-import MorseTree    from './MorseTree';
+import MorseTree     from './MorseTree';
 import AlphabetPanel from './AlphabetPanel';
 import ReverseMorse  from './ReverseMorse';
 
@@ -12,7 +12,7 @@ export default function ConverterSection() {
   const [downloading, setDownloading] = useState(false);
   const [activeLetter, setActiveLetter] = useState(null);
   const [currentStep, setCurrentStep]   = useState(0);
-  const [flashOn, setFlashOn]           = useState(false);
+  const [screenFlash, setScreenFlash]   = useState(false);
 
   // Settings
   const [showSettings, setShowSettings] = useState(false);
@@ -22,8 +22,10 @@ export default function ConverterSection() {
 
   // Feature toggles
   const [soundOn,   setSoundOn]   = useState(true);
-  const [lightOn,   setLightOn]   = useState(false);
+  const [torchOn,   setTorchOn]   = useState(false); // 📸 camera torch
+  const [screenOn,  setScreenOn]  = useState(false); // 🌟 screen flash
   const [vibrateOn, setVibrateOn] = useState(false);
+  const [repeatOn,  setRepeatOn]  = useState(false); // 🔁 loop toggle
 
   const playerRef        = useRef(null);
   const pauseAtRef       = useRef(0);
@@ -33,18 +35,22 @@ export default function ConverterSection() {
   const pitchRef         = useRef(550);
   const volumeRef        = useRef(75);
   const soundOnRef       = useRef(true);
-  const lightOnRef       = useRef(false);
+  const torchOnRef       = useRef(false);
+  const screenOnRef      = useRef(false);
   const vibrateOnRef     = useRef(false);
+  const repeatOnRef      = useRef(false);
   const torchTrackRef    = useRef(null);
 
-  // Keep refs in sync
-  lettersRef.current  = letters;
-  speedRef.current    = speed;
-  pitchRef.current    = pitch;
-  volumeRef.current   = volume;
-  soundOnRef.current  = soundOn;
-  lightOnRef.current  = lightOn;
+  // Keep refs in sync with state on every render
+  lettersRef.current   = letters;
+  speedRef.current     = speed;
+  pitchRef.current     = pitch;
+  volumeRef.current    = volume;
+  soundOnRef.current   = soundOn;
+  torchOnRef.current   = torchOn;
+  screenOnRef.current  = screenOn;
   vibrateOnRef.current = vibrateOn;
+  repeatOnRef.current  = repeatOn;
 
   function handleInput(e) {
     const val = e.target.value;
@@ -58,9 +64,8 @@ export default function ConverterSection() {
     if (torchTrackRef.current) return;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-      const track  = stream.getVideoTracks()[0];
-      torchTrackRef.current = track;
-    } catch { /* torch not supported, ignore */ }
+      torchTrackRef.current = stream.getVideoTracks()[0];
+    } catch { /* not supported */ }
   }
 
   function setTorch(on) {
@@ -73,6 +78,16 @@ export default function ConverterSection() {
     torchTrackRef.current = null;
   }
 
+  function handleTorchToggle() {
+    if (torchOn) {
+      setTorchOn(false);
+      closeTorch();
+    } else {
+      setTorchOn(true);
+      openTorch(); // pre-acquire permission
+    }
+  }
+
   // ── Playback ───────────────────────────────────────────────────────────────
   function doPlay(fromIndex) {
     const ls = lettersRef.current;
@@ -81,27 +96,31 @@ export default function ConverterSection() {
     playerRef.current = playMorseConfigured(
       ls,
       {
-        speed:    speedRef.current,
-        pitch:    pitchRef.current,
-        volume:   volumeRef.current,
-        soundOn:  soundOnRef.current,
+        speed:      speedRef.current,
+        pitch:      pitchRef.current,
+        volume:     volumeRef.current,
+        soundOn:    soundOnRef.current,
         startIndex: fromIndex,
         onFlash: (isOn) => {
-          if (!lightOnRef.current) return;
-          setFlashOn(isOn);
-          setTorch(isOn);
+          if (screenOnRef.current) setScreenFlash(isOn);
+          if (torchOnRef.current)  setTorch(isOn);
         },
         onVibrate: (dur) => {
-          if (!vibrateOnRef.current) return;
-          navigator.vibrate?.(dur);
+          if (vibrateOnRef.current) navigator.vibrate?.(dur);
         },
       },
-      () => { // onEnd
+      () => { // onEnd — check repeat before going idle
+        if (repeatOnRef.current) {
+          setActiveLetter(null);
+          setCurrentStep(0);
+          doPlay(0); // loop from start
+          return;
+        }
         setPlayState('idle');
         setActiveLetter(null);
         setCurrentStep(0);
-        setFlashOn(false);
-        closeTorch();
+        setScreenFlash(false);
+        if (!torchOnRef.current) closeTorch();
       },
       (ev) => { // onEvent
         if (ev.type === 'letter') {
@@ -121,30 +140,25 @@ export default function ConverterSection() {
     setPlayState('idle');
     setActiveLetter(null);
     setCurrentStep(0);
-    setFlashOn(false);
-    closeTorch();
+    setScreenFlash(false);
     pauseAtRef.current = 0;
+    // Only close torch if torch toggle is off
+    if (!torchOnRef.current) closeTorch();
   }
 
   function handlePlayPause() {
-    const ls = lettersRef.current;
-    if (!ls.length && playState === 'idle') return;
+    if (!letters.length && playState === 'idle') return;
 
     if (playState === 'playing') {
-      // Pause
       pauseAtRef.current = currentLetterRef.current;
       playerRef.current?.stop();
       setPlayState('paused');
       setActiveLetter(null);
-      setFlashOn(false);
+      setScreenFlash(false);
     } else if (playState === 'paused') {
-      // Resume from saved letter
-      if (lightOnRef.current) openTorch();
       doPlay(pauseAtRef.current);
     } else {
-      // Start from beginning
       pauseAtRef.current = 0;
-      if (lightOnRef.current) openTorch();
       doPlay(0);
     }
   }
@@ -153,14 +167,9 @@ export default function ConverterSection() {
     stopAll();
   }
 
-  function handleRepeat() {
-    playerRef.current?.stop();
-    setActiveLetter(null);
-    setCurrentStep(0);
-    setFlashOn(false);
-    pauseAtRef.current = 0;
-    if (lightOnRef.current) openTorch();
-    doPlay(0);
+  // 🔁 is now a toggle — auto-repeat when on
+  function handleRepeatToggle() {
+    setRepeatOn(v => !v);
   }
 
   async function handleDownload() {
@@ -186,7 +195,7 @@ export default function ConverterSection() {
     } catch { /* cancelled or not supported */ }
   }
 
-  // ── Derived display ────────────────────────────────────────────────────────
+  // ── Derived ────────────────────────────────────────────────────────────────
   const playing = playState === 'playing';
   const hasText = letters.length > 0;
 
@@ -214,8 +223,8 @@ export default function ConverterSection() {
   return (
     <div className="converter-section">
 
-      {/* Full-screen flash overlay */}
-      {flashOn && <div className="flash-overlay" />}
+      {/* Full-screen white flash overlay */}
+      {screenFlash && <div className="flash-overlay" />}
 
       {/* ── Text input ── */}
       <section className="card">
@@ -229,7 +238,6 @@ export default function ConverterSection() {
         />
       </section>
 
-      {/* ── Morse code display ── */}
       {hasText && (
         <section className="card">
           <label>Morse Code</label>
@@ -237,7 +245,6 @@ export default function ConverterSection() {
         </section>
       )}
 
-      {/* ── Letter visualizer (while playing) ── */}
       {playing && activeLetter && (
         <section className="card letter-viz-card">
           <div className="letter-viz">
@@ -257,7 +264,6 @@ export default function ConverterSection() {
         </section>
       )}
 
-      {/* ── Alphabet panel ── */}
       {hasText && (
         <section className="card">
           <label>Visual Alphabet — lights follow playback</label>
@@ -265,15 +271,12 @@ export default function ConverterSection() {
         </section>
       )}
 
-      {/* ── Morse flowchart ── */}
       <section className="card tree-card">
         <label>Morse Flowchart</label>
         <MorseTree activeMorse={activeLetter?.morse ?? null} currentStep={currentStep} />
       </section>
 
-      {/* ══════════════════════════════════════════
-          CONTROL BAR
-          ══════════════════════════════════════════ */}
+      {/* ══ CONTROL BAR ══ */}
       <div className="ctrl-bar">
 
         {/* Playback group */}
@@ -295,8 +298,8 @@ export default function ConverterSection() {
             <span className="ctrl-label">Stop</span>
           </button>
           <button
-            className="ctrl-btn ctrl-play"
-            onClick={handleRepeat}
+            className={`ctrl-btn ctrl-play ${repeatOn ? 'ctrl-play-repeat' : ''}`}
+            onClick={handleRepeatToggle}
             disabled={!hasText}
           >
             <span className="ctrl-icon">🔁</span>
@@ -314,11 +317,18 @@ export default function ConverterSection() {
             <span className="ctrl-label">Sound</span>
           </button>
           <button
-            className={`ctrl-btn ctrl-toggle ${lightOn ? 'ctrl-toggle-light' : ''}`}
-            onClick={() => setLightOn(v => !v)}
+            className={`ctrl-btn ctrl-toggle ${torchOn ? 'ctrl-toggle-torch' : ''}`}
+            onClick={handleTorchToggle}
           >
-            <span className="ctrl-icon">💡</span>
-            <span className="ctrl-label">Light</span>
+            <span className="ctrl-icon">📸</span>
+            <span className="ctrl-label">Flash</span>
+          </button>
+          <button
+            className={`ctrl-btn ctrl-toggle ${screenOn ? 'ctrl-toggle-screen' : ''}`}
+            onClick={() => setScreenOn(v => !v)}
+          >
+            <span className="ctrl-icon">🌟</span>
+            <span className="ctrl-label">Screen</span>
           </button>
           <button
             className={`ctrl-btn ctrl-toggle ${vibrateOn ? 'ctrl-toggle-vib' : ''}`}
@@ -360,56 +370,42 @@ export default function ConverterSection() {
 
       </div>
 
-      {/* ══════════════════════════════════════════
-          SETTINGS PANEL (collapsible)
-          ══════════════════════════════════════════ */}
+      {/* ══ SETTINGS PANEL ══ */}
       {showSettings && (
         <div className="settings-panel">
           <div className="settings-row">
-
             <div className="setting-item">
               <span className="setting-label">Speed</span>
               <span className="setting-value">{speed}</span>
-              <input
-                type="range" min="5" max="100" value={speed}
+              <input type="range" min="5" max="100" value={speed}
                 onChange={e => setSpeed(Number(e.target.value))}
                 className="setting-slider"
-                style={{ writingMode: 'vertical-lr', direction: 'rtl' }}
-              />
+                style={{ writingMode: 'vertical-lr', direction: 'rtl' }} />
               <span className="setting-range">5–100</span>
             </div>
-
             <div className="setting-item">
               <span className="setting-label">Pitch</span>
               <span className="setting-value">{pitch} Hz</span>
-              <input
-                type="range" min="200" max="1000" value={pitch}
+              <input type="range" min="200" max="1000" value={pitch}
                 onChange={e => setPitch(Number(e.target.value))}
                 className="setting-slider"
-                style={{ writingMode: 'vertical-lr', direction: 'rtl' }}
-              />
+                style={{ writingMode: 'vertical-lr', direction: 'rtl' }} />
               <span className="setting-range">200–1000</span>
             </div>
-
             <div className="setting-item">
               <span className="setting-label">Volume</span>
               <span className="setting-value">{volume}%</span>
-              <input
-                type="range" min="0" max="100" value={volume}
+              <input type="range" min="0" max="100" value={volume}
                 onChange={e => setVolume(Number(e.target.value))}
                 className="setting-slider"
-                style={{ writingMode: 'vertical-lr', direction: 'rtl' }}
-              />
+                style={{ writingMode: 'vertical-lr', direction: 'rtl' }} />
               <span className="setting-range">0–100</span>
             </div>
-
           </div>
         </div>
       )}
 
-      {/* ══════════════════════════════════════════
-          REVERSE MORSE (Morse → Text)
-          ══════════════════════════════════════════ */}
+      {/* ══ MORSE → TEXT ══ */}
       <section className="card">
         <label>Morse → Text</label>
         <ReverseMorse />
