@@ -524,15 +524,18 @@ export default function NumberPad() {
     autoRef.current = { t1: null, t2: null };
   }
 
-  // FIX: startNewRound no longer calls clearAll internally — caller is
-  //      responsible so we don't get double state-clears that confuse React.
   function startNewRound() {
+    // Reset ALL user-input state before the new round begins
+    setUserInput('');
+    setFeedback(null);
+    setResultFade(false);
+    clearDemo(); // stop any lingering watch animation
+
     const seq = randSeq(maxLen);
     setTargetSeq(seq);
     setActiveId('');
     setRoundKey(k => k + 1);
     setPhase('watching');
-    // FIX: store the timeout ID so it can be cleared on unmount
     roundTimer.current = setTimeout(
       () => { runDemoAnim(seq, GAME_WATCH, () => setPhase('playing')); },
       80
@@ -542,12 +545,10 @@ export default function NumberPad() {
 
   function launchGame() {
     stopAutoTimers();
-    clearAll(); // single clear here, startNewRound does NOT clear
     setGameMode('game');
     setHistory([]);
     setScore({ ok: 0, total: 0 });
-    // Kick off first round synchronously
-    startNewRound();
+    startNewRound(); // startNewRound resets all user/demo state itself
   }
 
   function launchPractice() {
