@@ -997,3 +997,167 @@ textarea::placeholder { color: #334155; }
   font-family: 'Courier New', monospace;
   animation: pulse-text 0.75s ease-in-out infinite alternate;
 }
+
+/* ── Small pad-btn variant (watch keypad) ── */
+.pad-btn-sm {
+  font-size: 1.1rem;
+  border-radius: 8px;
+}
+.pad-btn.pad-btn-dim {
+  background: #121218;
+  border-color: #1e2030;
+  color: #2e3048;
+  cursor: default;
+}
+.pad-btn.pad-btn-dim.btn-demo-lit {
+  border-color: #3d8a5e;
+  color: #7ee8a2;
+  background: rgba(126,232,162,0.05);
+}
+
+/* ── Game top bar (score + max-length) ── */
+.game-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.maxlen-picker {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.maxlen-label {
+  font-size: 0.72rem;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-right: 4px;
+  font-weight: 700;
+}
+.maxlen-btn {
+  width: 28px;
+  height: 28px;
+  background: #14141e;
+  border: 1px solid #2e3048;
+  border-radius: 6px;
+  color: #475569;
+  font-size: 0.78rem;
+  font-weight: 700;
+  font-family: 'Courier New', monospace;
+  cursor: pointer;
+  transition: all 0.14s;
+}
+.maxlen-btn:hover { border-color: #3d5a4a; color: #94a3b8; }
+.maxlen-btn.maxlen-active {
+  background: #1a3a2a;
+  border-color: #7ee8a2;
+  color: #7ee8a2;
+}
+
+/* ── Sequence length badge ── */
+.seq-len-badge {
+  font-size: 0.68rem;
+  color: #475569;
+  font-family: 'Courier New', monospace;
+  background: #14141e;
+  border: 1px solid #2e3048;
+  border-radius: 10px;
+  padding: 2px 8px;
+  align-self: center;
+}
+
+/* ── Result flash (auto-advance game mode) ── */
+.game-result-flash {
+  font-size: 1.4rem;
+  font-weight: 900;
+  font-family: 'Courier New', monospace;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  transition: opacity 0.5s ease;
+  opacity: 1;
+}
+.game-result-flash.fading { opacity: 0; }
+.game-result-flash.correct { color: #7ee8a2; text-shadow: 0 0 20px rgba(126,232,162,0.5); }
+.game-result-flash.wrong   { color: #f87171; text-shadow: 0 0 20px rgba(248,113,113,0.4); }
+.result-auto-hint {
+  font-size: 0.7rem;
+  color: #475569;
+  font-weight: 400;
+  letter-spacing: 0.5px;
+}
+
+/* ── Watch keypad section ── */
+.watch-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+.watch-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+}
+.watch-label {
+  font-size: 0.72rem;
+  color: #3d8a5e;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  font-weight: 700;
+}
+.watch-toggle-btn {
+  font-size: 0.7rem;
+  padding: 3px 10px;
+  background: #14141e;
+  border: 1px solid #2e3048;
+  border-radius: 6px;
+  color: #475569;
+  cursor: pointer;
+  font-family: 'Courier New', monospace;
+  transition: all 0.14s;
+}
+.watch-toggle-btn:hover { border-color: #3d5a4a; color: #94a3b8; }
+
+/* Smooth expand / collapse of watch keypad */
+.watch-collapsible {
+  overflow: hidden;
+  transition: max-height 0.35s ease, opacity 0.3s ease;
+  max-height: 280px;
+  opacity: 1;
+}
+.watch-collapsible.collapsed {
+  max-height: 0;
+  opacity: 0;
+}
+
+/* ── Input keypad section ── */
+.input-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+.input-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+}
+.input-label {
+  font-size: 0.72rem;
+  color: #60a5fa;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  font-weight: 700;
+}
