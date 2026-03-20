@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { MORSE_CODE } from './morseCode';
 import { playMorse, startKeyToneConfigured, playSymbolBeep } from './audioEngine';
+import MorseTree from './MorseTree';
 
 // ── Reverse lookup: morse pattern → character ──────────────────────────────
 const REVERSE = Object.fromEntries(
@@ -153,6 +154,11 @@ function ManualTab({ onAppend, onPreviewChange, soundOn, pitch, volume, speed })
   const keyRafRef  = useRef(null);
   const toneRef    = useRef(null); // live key tone handle
 
+  // Tree flash state — highlight committed path for 500 ms
+  const [treeFlash,  setTreeFlash]  = useState(false);
+  const [flashMorse, setFlashMorse] = useState('');
+  const flashTimerRef = useRef(null);
+
   // Keep sound settings accessible in callbacks without stale closure issues
   const soundRef  = useRef(soundOn);
   const pitchRef  = useRef(pitch);
@@ -168,6 +174,14 @@ function ManualTab({ onAppend, onPreviewChange, soundOn, pitch, volume, speed })
     const s = curRef.current;
     if (!s) return;
     onAppend({ char: decodeSym(s), morse: s });
+    // Flash completed tree path for 500 ms
+    setFlashMorse(s);
+    setTreeFlash(true);
+    clearTimeout(flashTimerRef.current);
+    flashTimerRef.current = setTimeout(() => {
+      setTreeFlash(false);
+      setFlashMorse('');
+    }, 500);
     curRef.current = ''; setCur(''); onPreviewChange('');
   }
 
@@ -230,6 +244,7 @@ function ManualTab({ onAppend, onPreviewChange, soundOn, pitch, volume, speed })
 
   useEffect(() => () => {
     clearTimeout(timer.current);
+    clearTimeout(flashTimerRef.current);
     cancelAnimationFrame(keyRafRef.current);
     toneRef.current?.stop(); // clean up any hanging tone on unmount
   }, []);
@@ -240,6 +255,10 @@ function ManualTab({ onAppend, onPreviewChange, soundOn, pitch, volume, speed })
   const dashOffset = MK_CIRC * (1 - keyProg);
   const keySymbol  = keyDown ? (isDash ? '−' : '·') : '●';
   const keyColor   = keyDown ? (isDash ? '#fb923c' : '#7ee8a2') : '#475569';
+
+  // Derived tree props — show path being built; flash committed path for 500 ms
+  const treeActiveMorse = treeFlash ? flashMorse : (cur || null);
+  const treeStep        = treeFlash ? flashMorse.length : cur.length;
 
   return (
     <div className="rm-tab-body">
@@ -254,60 +273,45 @@ function ManualTab({ onAppend, onPreviewChange, soundOn, pitch, volume, speed })
         {cur && <span className="rm-cur-preview"> = {decodeSym(cur)}</span>}
       </div>
 
-      {/* Quick-tap buttons */}
+      {/* Single scrollable row: · − / Word  KEY */}
       <div className="rm-buttons">
         <button className="rm-btn rm-btn-dot"   onClick={() => addSym('.')}>·</button>
         <button className="rm-btn rm-btn-dash"  onClick={() => addSym('-')}>−</button>
         <button className="rm-btn rm-btn-space" onClick={wordSpace}>/ Word</button>
+        <div className="mk-wrap">
+          <svg className="mk-ring" viewBox="0 0 140 140" aria-hidden="true">
+            <circle cx="70" cy="70" r={MK_R} fill="none" stroke="#1a1a24" strokeWidth="5" />
+            <circle
+              cx="70" cy="70" r={MK_R}
+              fill="none"
+              stroke={ringColor}
+              strokeWidth="5"
+              strokeDasharray={MK_CIRC}
+              strokeDashoffset={dashOffset}
+              strokeLinecap="round"
+              transform="rotate(-90 70 70)"
+              style={{ transition: keyDown ? 'stroke 0.08s' : 'stroke 0.2s, stroke-dashoffset 0.05s' }}
+            />
+          </svg>
+          <button
+            className={`mk-btn${keyDown ? ' mk-btn-on' : ''}${keyDown && isDash ? ' mk-btn-dash-glow' : ''}`}
+            onPointerDown={onKeyDown}
+            onPointerUp={onKeyUp}
+            onPointerCancel={onKeyCancel}
+            onContextMenu={e => e.preventDefault()}
+            style={{ touchAction: 'none', '--key-color': keyColor }}
+            aria-label="Morse key — tap for dot, hold for dash"
+          >
+            <span className="mk-sym">{keySymbol}</span>
+            <span className="mk-lbl">KEY</span>
+          </button>
+        </div>
       </div>
 
-      {cur && <div className="rm-auto-hint">auto-commit in 1.5 s — or tap / Word</div>}
+      {cur && <div className="rm-auto-hint">auto-commit in 1.5 s — or tap · − or KEY</div>}
 
-      {/* ── Morse Key ── */}
-      <div className="mk-divider"><span>— or use Morse Key —</span></div>
-
-      <div className="mk-wrap">
-        {/* Progress ring SVG */}
-        <svg className="mk-ring" viewBox="0 0 140 140" aria-hidden="true">
-          <circle cx="70" cy="70" r={MK_R} fill="none" stroke="#1a1a24" strokeWidth="5" />
-          <circle
-            cx="70" cy="70" r={MK_R}
-            fill="none"
-            stroke={ringColor}
-            strokeWidth="5"
-            strokeDasharray={MK_CIRC}
-            strokeDashoffset={dashOffset}
-            strokeLinecap="round"
-            transform="rotate(-90 70 70)"
-            style={{ transition: keyDown ? 'stroke 0.08s' : 'stroke 0.2s, stroke-dashoffset 0.05s' }}
-          />
-        </svg>
-
-        {/* The key button */}
-        <button
-          className={`mk-btn${keyDown ? ' mk-btn-on' : ''}${keyDown && isDash ? ' mk-btn-dash-glow' : ''}`}
-          onPointerDown={onKeyDown}
-          onPointerUp={onKeyUp}
-          onPointerCancel={onKeyCancel}
-          onContextMenu={e => e.preventDefault()}
-          style={{ touchAction: 'none', '--key-color': keyColor }}
-          aria-label="Morse key — tap for dot, hold for dash"
-        >
-          <span className="mk-sym">{keySymbol}</span>
-          <span className="mk-lbl">KEY</span>
-        </button>
-      </div>
-
-      {/* Legend */}
-      <div className="mk-legend">
-        <span className="mk-leg-item">
-          <span className="mk-leg-dot">·</span> tap &lt;300ms
-        </span>
-        <span className="mk-leg-sep">|</span>
-        <span className="mk-leg-item">
-          <span className="mk-leg-dash">−</span> hold ≥300ms
-        </span>
-      </div>
+      {/* MorseTree — highlights path as symbols are typed, flashes on commit */}
+      <MorseTree activeMorse={treeActiveMorse} currentStep={treeStep} />
     </div>
   );
 }
