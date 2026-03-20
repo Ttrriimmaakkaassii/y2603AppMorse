@@ -1131,7 +1131,7 @@ textarea::placeholder { color: #334155; }
 .watch-collapsible {
   overflow: hidden;
   transition: max-height 0.35s ease, opacity 0.3s ease;
-  max-height: 280px;
+  max-height: 240px;
   opacity: 1;
 }
 .watch-collapsible.collapsed {
@@ -1161,3 +1161,89 @@ textarea::placeholder { color: #334155; }
   letter-spacing: 1.2px;
   font-weight: 700;
 }
+
+/* ════════════════════════════════
+   GAME MODE — SIDE-BY-SIDE LAYOUT
+   ════════════════════════════════ */
+
+/* Row container: watch LEFT, input RIGHT */
+.game-keypads-row {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  align-items: flex-start;
+  justify-content: center;
+  width: 100%;
+}
+
+/* Fallback: stack vertically on very narrow screens */
+@media (max-width: 400px) {
+  .game-keypads-row {
+    flex-direction: column;
+    align-items: center;
+  }
+}
+
+/* Each column */
+.game-watch-col,
+.game-input-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── Picto preview SVG thumbnail ── */
+.picto-preview-svg {
+  display: block;
+  background: #0a0a12;
+  border-radius: 6px;
+  border: 1px solid #1e2535;
+  flex-shrink: 0;
+}
+
+/* ── Game history list ── */
+.game-history {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  max-width: 380px;
+  margin-top: 2px;
+}
+.game-history-label {
+  font-size: 0.65rem;
+  color: #334155;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+.history-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: #12121a;
+  border: 1px solid #1e2535;
+}
+.hi-ok  { border-color: rgba(126,232,162,0.18); }
+.hi-err { border-color: rgba(248,113,113,0.14); }
+.hi-seq {
+  font-family: 'Courier New', monospace;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #64748b;
+  letter-spacing: 3px;
+  flex: 1;
+}
+.hi-result {
+  font-size: 0.88rem;
+  font-weight: 900;
+  font-family: 'Courier New', monospace;
+}
+.hi-ok  .hi-result { color: #7ee8a2; }
+.hi-err .hi-result { color: #f87171; }

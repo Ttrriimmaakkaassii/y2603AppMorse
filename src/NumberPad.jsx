@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 
-// ── Orbit colour palette (changes with each nested repeat) ────────────────────
+// ── Orbit colour palette ───────────────────────────────────────────────────────
 const ORBIT_COLORS = ['#7ee8a2', '#5eead4', '#67e8f9', '#93c5fd'];
 
-// ── Size-config factory — keeps geometry self-contained ───────────────────────
+// ── Size-config factory ───────────────────────────────────────────────────────
 function makeSize(bw, bh, gap) {
   const pw = 3 * bw + 2 * gap;
   const ph = 4 * bh + 3 * gap;
@@ -14,8 +14,10 @@ function makeSize(bw, bh, gap) {
   return { bw, bh, gap, pw, ph, bpos };
 }
 
-const WATCH = makeSize(56, 48, 7);   // small watch pad
-const INPUT = makeSize(76, 66, 10);  // full input pad
+const WATCH     = makeSize(56, 48, 7);   // practice mode: small demo pad
+const INPUT     = makeSize(76, 66, 10);  // practice mode: input pad
+const GAME_WATCH = makeSize(46, 40, 5);  // game mode: watch pad (side-by-side)
+const GAME_INPUT = makeSize(54, 47, 6);  // game mode: input pad (side-by-side)
 
 const KEYS = ['1','2','3','4','5','6','7','8','9','*','0','#'];
 
@@ -63,11 +65,8 @@ function randSeq(maxLen) {
 }
 
 // ── Core: sequence → animation steps ─────────────────────────────────────────
-// Returns [{type:'move', from, to, fromDigit, toDigit}
-//         |{type:'orbit', center, digit, r, color}]
 function parseSteps(seq, bpos, bw) {
   if (!seq) return [];
-  // Group into runs of consecutive identical chars
   const runs = [];
   let i = 0;
   while (i < seq.length) {
@@ -77,14 +76,11 @@ function parseSteps(seq, bpos, bw) {
     runs.push({ d, n });
     i += n;
   }
-
   const steps = [];
   for (let ri = 0; ri < runs.length; ri++) {
     const { d, n } = runs[ri];
     const pos = bpos[d];
     if (!pos) continue;
-
-    // Line from previous run to this one (skip if first)
     if (ri > 0) {
       const prev = runs[ri - 1];
       const prevPos = bpos[prev.d];
@@ -93,14 +89,12 @@ function parseSteps(seq, bpos, bw) {
           fromDigit: prev.d, toDigit: d });
       }
     }
-
-    // Each extra occurrence beyond first → concentric orbit
     for (let oi = 0; oi < n - 1; oi++) {
       steps.push({
         type:   'orbit',
         center: pos,
         digit:  d,
-        r:      (bw / 2) + 6 + oi * 12,        // radius grows with each orbit
+        r:      (bw / 2) + 6 + oi * 12,
         color:  ORBIT_COLORS[oi % ORBIT_COLORS.length],
       });
     }
@@ -109,10 +103,6 @@ function parseSteps(seq, bpos, bw) {
 }
 
 // ── SVG element renderer ──────────────────────────────────────────────────────
-// elems    – completed steps  (lines drawn solid, orbits drawn full circles)
-// animCur  – step in progress (null if nothing animating)
-// lineColor– colour for line segments
-// monoColor– if true, use lineColor for orbits too (user path); else use step.color
 function renderElems(elems, animCur, lineColor, monoColor = false) {
   const glow = lineColor + '28';
   const out  = [];
@@ -120,7 +110,6 @@ function renderElems(elems, animCur, lineColor, monoColor = false) {
   function oc(step) { return monoColor ? lineColor : step.color; }
   function og(step) { return monoColor ? glow      : step.color + '28'; }
 
-  // Completed line
   function addLine(key, x1, y1, x2, y2) {
     const pts = `${x1.toFixed(1)},${y1.toFixed(1)} ${x2.toFixed(1)},${y2.toFixed(1)}`;
     out.push(
@@ -131,14 +120,13 @@ function renderElems(elems, animCur, lineColor, monoColor = false) {
     );
   }
 
-  // Orbit (full or partial via frac 0–1)
   function addOrbit(key, step, frac) {
     const { center: { x: cx, y: cy }, r } = step;
     const circ   = 2 * Math.PI * r;
     const drawn  = circ * frac;
     const full   = drawn >= circ - 0.1;
     const dash   = full ? undefined : `${drawn.toFixed(2)} ${(circ - drawn).toFixed(2)}`;
-    const offset = circ * 0.25;          // start arc from 12 o'clock
+    const offset = circ * 0.25;
     const extra  = dash ? { strokeDasharray: dash, strokeDashoffset: offset } : {};
     out.push(
       <circle key={`${key}g`} cx={cx} cy={cy} r={r} fill="none"
@@ -148,13 +136,11 @@ function renderElems(elems, animCur, lineColor, monoColor = false) {
     );
   }
 
-  // Completed elements
   elems.forEach((e, i) => {
     if (e.type === 'move')  addLine(`e${i}m`, e.from.x, e.from.y, e.to.x, e.to.y);
     if (e.type === 'orbit') addOrbit(`e${i}o`, e, 1);
   });
 
-  // Animating element
   if (animCur) {
     if (animCur.type === 'move') {
       const { from, to, progress: p } = animCur;
@@ -168,7 +154,7 @@ function renderElems(elems, animCur, lineColor, monoColor = false) {
   return out;
 }
 
-// ── Mini SVG for shapes-panel previews ───────────────────────────────────────
+// ── Mini grid coordinates for picto previews ──────────────────────────────────
 const PREV_BPOS = {
   '1':{x:7,y:7},'2':{x:21,y:7},'3':{x:35,y:7},
   '4':{x:7,y:21},'5':{x:21,y:21},'6':{x:35,y:21},
@@ -176,9 +162,73 @@ const PREV_BPOS = {
   '*':{x:7,y:49},'0':{x:21,y:49},'#':{x:35,y:49},
 };
 const PREV_BW = 12;
+const PREV_GRID_KEYS = ['1','2','3','4','5','6','7','8','9'];
+const PREV_GRID_KEYS_FULL = ['1','2','3','4','5','6','7','8','9','*','0','#'];
 
+// ── Animated picto thumbnail ─────────────────────────────────────────────────
+// animate=true → draws path progressively on mount; animate=false → instant
+function PictoPreview({ seq, size = 40, animate = true }) {
+  const [elems,   setElems]   = useState([]);
+  const [animCur, setAnimCur] = useState(null);
+  const rafRef = useRef(null);
+
+  useEffect(() => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    if (!seq) { setElems([]); setAnimCur(null); return; }
+
+    const steps = parseSteps(seq, PREV_BPOS, PREV_BW);
+
+    if (!animate || steps.length === 0) {
+      setElems(steps);
+      setAnimCur(null);
+      return;
+    }
+
+    setElems([]);
+    setAnimCur(null);
+    let si = 0, startTs = null;
+    const SPEED = 300;
+
+    function frame(ts) {
+      if (!startTs) startTs = ts;
+      const t  = Math.min((ts - startTs) / SPEED, 1);
+      const et = easeInOut(t);
+      setAnimCur({ ...steps[si], progress: et });
+      if (t < 1) { rafRef.current = requestAnimationFrame(frame); return; }
+      setElems(prev => [...prev, steps[si]]);
+      setAnimCur(null);
+      si++; startTs = null;
+      if (si < steps.length) rafRef.current = requestAnimationFrame(frame);
+      else rafRef.current = null;
+    }
+    rafRef.current = requestAnimationFrame(frame);
+    return () => { if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; } };
+  }, [seq, animate]);
+
+  const has4    = seq && /[*0#]/.test(seq);
+  const vH      = has4 ? 56 : 42;
+  const gridKeys = has4 ? PREV_GRID_KEYS_FULL : PREV_GRID_KEYS;
+  const firstPos = seq ? PREV_BPOS[seq[0]] : null;
+  const h        = Math.round(size * vH / 42);
+
+  return (
+    <svg viewBox={`0 0 42 ${vH}`} width={size} height={h} className="picto-preview-svg">
+      {/* Faint dot grid */}
+      {gridKeys.map(k => {
+        const p = PREV_BPOS[k];
+        return <circle key={k} cx={p.x} cy={p.y} r="1.8" fill="#1e2535" />;
+      })}
+      {renderElems(elems, animCur, '#7ee8a2', false)}
+      {firstPos && (
+        <circle cx={firstPos.x} cy={firstPos.y} r="2.5" fill="#7ee8a2" opacity="0.9" />
+      )}
+    </svg>
+  );
+}
+
+// ── Static mini SVG for shapes-panel chips ────────────────────────────────────
 function ShapePreview({ seq }) {
-  const steps   = parseSteps(seq, PREV_BPOS, PREV_BW);
+  const steps    = parseSteps(seq, PREV_BPOS, PREV_BW);
   const firstPos = PREV_BPOS[seq[0]];
   const has4     = /[*0#]/.test(seq);
   return (
@@ -190,15 +240,9 @@ function ShapePreview({ seq }) {
 }
 
 // ── Keypad component ──────────────────────────────────────────────────────────
-// layers: [{elems, animCur, lineColor, monoColor, lit}]
-//   – each layer is an independent path drawn on the same SVG overlay
-// onTap       – key tap handler (omit for read-only)
-// dim         – render dimmed style (watch pad)
-// firstDigit  – if set, draws a start-dot at that button
 function Keypad({ sz, layers = [], onTap, dim, firstDigit }) {
   const { bw, bh, gap, pw, ph, bpos } = sz;
 
-  // Which buttons glow, and in which color (first layer wins per key)
   const litMap = new Map();
   layers.forEach(layer => {
     (layer.lit || new Set()).forEach(k => {
@@ -220,7 +264,7 @@ function Keypad({ sz, layers = [], onTap, dim, firstDigit }) {
     return c.join(' ');
   }
 
-  const startPos = firstDigit ? bpos[firstDigit] : null;
+  const startPos   = firstDigit ? bpos[firstDigit] : null;
   const startColor = layers[0]?.lineColor ?? '#7ee8a2';
 
   return (
@@ -237,7 +281,6 @@ function Keypad({ sz, layers = [], onTap, dim, firstDigit }) {
       </div>
 
       <svg className="pad-overlay" viewBox={`0 0 ${pw} ${ph}`} width={pw} height={ph}>
-        {/* Button highlight rings */}
         {[...litMap.entries()].map(([d, col]) => {
           const p = bpos[d];
           return p ? (
@@ -245,15 +288,11 @@ function Keypad({ sz, layers = [], onTap, dim, firstDigit }) {
               fill={col+'18'} stroke={col} strokeWidth={bw<70?1.5:2} />
           ) : null;
         })}
-
-        {/* Path layers (demo first, user on top) */}
         {layers.map((layer, li) => (
           <g key={`ly${li}`}>
             {renderElems(layer.elems, layer.animCur, layer.lineColor, layer.monoColor ?? false)}
           </g>
         ))}
-
-        {/* Start dot */}
         {startPos && (
           <circle cx={startPos.x} cy={startPos.y} r={bw<70?4:6}
             fill={startColor} opacity="0.95" />
@@ -275,24 +314,29 @@ export default function NumberPad() {
   const [showWatch,  setShowWatch]  = useState(true);
   const [maxLen,     setMaxLen]     = useState(5);
   const [resultFade, setResultFade] = useState(false);
+  const [history,    setHistory]    = useState([]);  // [{seq, correct}]
+  const [roundKey,   setRoundKey]   = useState(0);   // increments each new round → re-mounts picto
 
   // Demo animation state
   const [demoElems,   setDemoElems]   = useState([]);
   const [demoAnimCur, setDemoAnimCur] = useState(null);
   const [demoLit,     setDemoLit]     = useState(new Set());
 
-  // User path derived from input string — no separate state needed
+  // Derive which input-pad geometry to use based on mode
+  const activeInputSz = gameMode === 'game' ? GAME_INPUT : INPUT;
+
+  // User path derived from input string
   const userElems = useMemo(
-    () => parseSteps(userInput, INPUT.bpos, INPUT.bw),
-    [userInput]
+    () => parseSteps(userInput, activeInputSz.bpos, activeInputSz.bw),
+    [userInput, activeInputSz]
   );
   const userLit = useMemo(
     () => new Set(userInput.split('').filter(Boolean)),
     [userInput]
   );
 
-  const animId  = useRef(null);
-  const autoRef = useRef({});
+  const animId   = useRef(null);
+  const autoRef  = useRef({});
   const newRound = useRef(null);
 
   useEffect(() => () => {
@@ -316,7 +360,6 @@ export default function NumberPad() {
     if (animId.current) { cancelAnimationFrame(animId.current); animId.current = null; }
   }
 
-  // sz = WATCH (game) or INPUT (practice)
   function runDemoAnim(seq, sz, onDone) {
     stopAnim();
     const steps = parseSteps(seq, sz.bpos, sz.bw);
@@ -339,7 +382,6 @@ export default function NumberPad() {
 
       setDemoAnimCur({ ...step, progress: et });
 
-      // Light up destination button when move is > halfway
       if (step.type === 'move' && t >= 0.55) {
         setDemoLit(prev =>
           prev.has(step.toDigit) ? prev : new Set([...prev, step.toDigit])
@@ -348,7 +390,6 @@ export default function NumberPad() {
 
       if (t < 1) { animId.current = requestAnimationFrame(frame); return; }
 
-      // Step complete
       setDemoElems(prev => [...prev, { ...step }]);
       setDemoAnimCur(null);
       si++; startTs = null;
@@ -368,7 +409,6 @@ export default function NumberPad() {
   function clearDemo()  { stopAnim(); setDemoElems([]); setDemoAnimCur(null); setDemoLit(new Set()); }
   function clearAll()   { clearDemo(); clearUser(); setFeedback(null); setResultFade(false); }
 
-  // sz: which pad geometry to animate on (WATCH in game, INPUT in practice)
   function startWatch(seq, sz) {
     clearUser(); setFeedback(null); setResultFade(false);
     setPhase('watching');
@@ -391,15 +431,20 @@ export default function NumberPad() {
       setFeedback(isOk ? 'correct' : 'wrong');
       setPhase('result');
       setScore(s => ({ ok: s.ok + (isOk ? 1 : 0), total: s.total + 1 }));
+      if (gameMode === 'game') {
+        setHistory(prev => [{ seq: targetSeq, correct: isOk }, ...prev].slice(0, 8));
+      }
     }
   }
 
   function startNewRound() {
     clearAll();
     const seq = randSeq(maxLen);
-    setTargetSeq(seq); setActiveId('');
+    setTargetSeq(seq);
+    setActiveId('');
+    setRoundKey(k => k + 1);
     setPhase('watching');
-    setTimeout(() => runDemoAnim(seq, WATCH, () => setPhase('playing')), 80);
+    setTimeout(() => runDemoAnim(seq, GAME_WATCH, () => setPhase('playing')), 80);
   }
   newRound.current = startNewRound;
 
@@ -407,6 +452,8 @@ export default function NumberPad() {
     clearTimeout(autoRef.current.t1); clearTimeout(autoRef.current.t2);
     clearAll();
     setGameMode('game');
+    setHistory([]);
+    setRoundKey(0);
     startNewRound();
   }
 
@@ -455,8 +502,9 @@ export default function NumberPad() {
             </div>
           </div>
 
-          {/* Target sequence */}
+          {/* PATH display with animated picto */}
           <div className="numpad-target">
+            <PictoPreview key={roundKey} seq={targetSeq} size={42} animate />
             <span className="numpad-target-label">Path:</span>
             <span className="numpad-target-seq">
               {targetSeq.split('').map((d, i) => {
@@ -465,7 +513,7 @@ export default function NumberPad() {
                 return <span key={i} className={cls}>{d}</span>;
               })}
             </span>
-            <span className="seq-len-badge">{targetSeq.length} digit{targetSeq.length>1?'s':''}</span>
+            <span className="seq-len-badge">{targetSeq.length}d</span>
           </div>
 
           {/* Result flash */}
@@ -480,52 +528,71 @@ export default function NumberPad() {
           {phase !== 'result' && (
             <div className="numpad-phase">
               {phase === 'watching' && <span className="phase-watch">◆ Memorise the path…</span>}
-              {phase === 'playing'  && <span className="phase-play">▶ Tap the numbers below in order</span>}
+              {phase === 'playing'  && <span className="phase-play">▶ Tap the path on the right</span>}
             </div>
           )}
 
-          {/* Watch keypad (collapsible) */}
-          <div className="watch-section">
-            <div className="watch-section-header">
-              <span className="watch-label">👁 Watch</span>
-              <button className="watch-toggle-btn" onClick={() => setShowWatch(s => !s)}>
-                {showWatch ? 'Hide' : 'Show'}
-              </button>
+          {/* ── Side-by-side keypads ── */}
+          <div className="game-keypads-row">
+
+            {/* LEFT: Watch keypad */}
+            <div className="game-watch-col">
+              <div className="watch-section-header">
+                <span className="watch-label">👁 Watch</span>
+                <button className="watch-toggle-btn" onClick={() => setShowWatch(s => !s)}>
+                  {showWatch ? 'Hide' : 'Show'}
+                </button>
+              </div>
+              <div className={`watch-collapsible ${showWatch?'':'collapsed'}`}>
+                <Keypad
+                  sz={GAME_WATCH}
+                  layers={[{ elems: demoElems, animCur: demoAnimCur,
+                             lineColor: '#7ee8a2', monoColor: false, lit: demoLit }]}
+                  dim
+                  firstDigit={demoElems.length > 0 || demoAnimCur ? targetSeq[0] : null}
+                />
+              </div>
             </div>
-            <div className={`watch-collapsible ${showWatch?'':'collapsed'}`}>
+
+            {/* RIGHT: Input keypad */}
+            <div className="game-input-col">
+              <div className="input-section-header">
+                <span className="input-label">✋ Input</span>
+                {phase === 'playing' && userInput.length > 0 && (
+                  <button className="btn btn-sm btn-clear-sm"
+                    style={{ padding:'3px 10px', fontSize:'0.72rem' }}
+                    onClick={clearUser}>⌫</button>
+                )}
+              </div>
               <Keypad
-                sz={WATCH}
-                layers={[{ elems: demoElems, animCur: demoAnimCur,
-                           lineColor: '#7ee8a2', monoColor: false, lit: demoLit }]}
-                dim
-                firstDigit={demoElems.length > 0 || demoAnimCur ? targetSeq[0] : null}
+                sz={GAME_INPUT}
+                layers={[{ elems: userElems, animCur: null,
+                           lineColor: userColor, monoColor: true, lit: userLit }]}
+                onTap={handleKeyTap}
+                firstDigit={userInput.length > 0 ? userInput[0] : null}
               />
             </div>
+
           </div>
 
-          {/* Input keypad */}
-          <div className="input-section">
-            <div className="input-section-header">
-              <span className="input-label">Your Input</span>
-              {phase === 'playing' && userInput.length > 0 && (
-                <button className="btn btn-sm btn-clear-sm"
-                  style={{ padding:'4px 12px', fontSize:'0.75rem' }}
-                  onClick={clearUser}>⌫ Clear</button>
-              )}
-            </div>
-            <Keypad
-              sz={INPUT}
-              layers={[{ elems: userElems, animCur: null,
-                         lineColor: userColor, monoColor: true, lit: userLit }]}
-              onTap={handleKeyTap}
-              firstDigit={userInput.length > 0 ? userInput[0] : null}
-            />
-          </div>
-
-          {/* Watch-again */}
+          {/* Watch-again button */}
           {(phase === 'playing' || phase === 'result') && (
             <button className="btn btn-play-ans btn-sm"
-              onClick={() => watchAgain(WATCH)}>↺ Watch again</button>
+              onClick={() => watchAgain(GAME_WATCH)}>↺ Watch again</button>
+          )}
+
+          {/* ── History list ── */}
+          {history.length > 0 && (
+            <div className="game-history">
+              <div className="game-history-label">History</div>
+              {history.map((h, i) => (
+                <div key={i} className={`history-item ${h.correct ? 'hi-ok' : 'hi-err'}`}>
+                  <PictoPreview seq={h.seq} size={24} animate={false} />
+                  <span className="hi-seq">{h.seq}</span>
+                  <span className="hi-result">{h.correct ? '✓' : '✗'}</span>
+                </div>
+              ))}
+            </div>
           )}
         </>
       )}
