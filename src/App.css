@@ -1084,6 +1084,55 @@ textarea::placeholder { color: #334155; }
   align-self: center;
 }
 
+/* ── Path countdown timer (Feature 2) ── */
+.path-countdown {
+  font-size: 0.72rem;
+  font-family: 'Courier New', monospace;
+  font-weight: 700;
+  color: #fb923c;
+  background: rgba(251,146,60,0.1);
+  border: 1px solid rgba(251,146,60,0.3);
+  border-radius: 8px;
+  padding: 2px 8px;
+  animation: countdown-pulse 0.9s ease-in-out infinite alternate;
+}
+@keyframes countdown-pulse {
+  0%   { opacity: 0.7; }
+  100% { opacity: 1; box-shadow: 0 0 8px rgba(251,146,60,0.4); }
+}
+
+/* ── Hide-delay row (Feature 2) ── */
+.hide-delay-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: center;
+  width: 100%;
+}
+
+/* ── Blind mode toggle button (Feature 1) ── */
+.blind-toggle-btn {
+  padding: 4px 12px;
+  background: #14141e;
+  border: 1px solid #2e3048;
+  border-radius: 8px;
+  color: #475569;
+  font-size: 0.78rem;
+  font-weight: 700;
+  font-family: 'Courier New', monospace;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.blind-toggle-btn:hover { border-color: #3d5a4a; color: #94a3b8; }
+.blind-toggle-btn.blind-on {
+  background: rgba(167,139,250,0.08);
+  border-color: #a78bfa;
+  color: #a78bfa;
+  box-shadow: 0 0 10px rgba(167,139,250,0.2);
+}
+
 /* ── Result flash (auto-advance game mode) ── */
 .game-result-flash {
   font-size: 1.4rem;

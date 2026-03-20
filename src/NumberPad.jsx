@@ -16,10 +16,10 @@ function makeSize(bw, bh, gap) {
   return { bw, bh, gap, pw, ph, bpos };
 }
 
-const WATCH      = makeSize(56, 48, 7);   // practice demo pad
-const INPUT      = makeSize(76, 66, 10);  // practice input pad
-const GAME_WATCH = makeSize(46, 40, 5);   // game watch pad (side-by-side)
-const GAME_INPUT = makeSize(54, 47, 6);   // game input pad (side-by-side)
+const WATCH      = makeSize(56, 48, 7);
+const INPUT      = makeSize(76, 66, 10);
+const GAME_WATCH = makeSize(46, 40, 5);
+const GAME_INPUT = makeSize(54, 47, 6);
 
 const KEYS = ['1','2','3','4','5','6','7','8','9','*','0','#'];
 
@@ -67,13 +67,12 @@ function randSeq(maxLen) {
     seq += d;
     prev = d;
   }
-  return seq || '123'; // absolute fallback — should never be empty
+  return seq || '123';
 }
 
 // ── Sequence → animation steps ────────────────────────────────────────────────
 function parseSteps(seq, bpos, bw) {
   if (!seq || !bpos) return [];
-  // Group consecutive identical digits into runs
   const runs = [];
   let i = 0;
   while (i < seq.length) {
@@ -88,7 +87,6 @@ function parseSteps(seq, bpos, bw) {
     const { d, n } = runs[ri];
     const pos = bpos[d];
     if (!pos) continue;
-    // Move line from previous run to this one
     if (ri > 0) {
       const prev    = runs[ri - 1];
       const prevPos = bpos[prev.d];
@@ -97,7 +95,6 @@ function parseSteps(seq, bpos, bw) {
           fromDigit: prev.d, toDigit: d });
       }
     }
-    // Each extra repeat → concentric orbit circle
     for (let oi = 0; oi < n - 1; oi++) {
       steps.push({
         type:   'orbit',
@@ -112,8 +109,6 @@ function parseSteps(seq, bpos, bw) {
 }
 
 // ── SVG renderer ──────────────────────────────────────────────────────────────
-// FIX: strokeDasharray "0.00 X" can corrupt some Chromium SVG renderers.
-//      We clamp the dash length to a minimum of 0.5 so we never write "0.00".
 function renderElems(elems, animCur, lineColor, monoColor = false) {
   if (!lineColor) return [];
   const glow = lineColor + '28';
@@ -123,7 +118,6 @@ function renderElems(elems, animCur, lineColor, monoColor = false) {
   function og(step) { return monoColor ? glow      : ((step?.color ?? lineColor) + '28'); }
 
   function addLine(key, x1, y1, x2, y2) {
-    // Guard against NaN coordinates
     if ([x1, y1, x2, y2].some(v => !Number.isFinite(v))) return;
     const pts = `${x1.toFixed(1)},${y1.toFixed(1)} ${x2.toFixed(1)},${y2.toFixed(1)}`;
     out.push(
@@ -138,7 +132,6 @@ function renderElems(elems, animCur, lineColor, monoColor = false) {
     if (!step?.center || !Number.isFinite(step.r) || step.r <= 0) return;
     const { center: { x: cx, y: cy }, r } = step;
     const circ  = 2 * Math.PI * r;
-    // FIX: clamp drawn length — never write "0.00" which breaks some SVG renderers
     const drawn = Math.max(circ * frac, 0.5);
     const full  = drawn >= circ - 0.1;
     const dash  = full ? undefined
@@ -153,14 +146,12 @@ function renderElems(elems, animCur, lineColor, monoColor = false) {
     );
   }
 
-  // Completed steps
   (elems || []).forEach((e, i) => {
     if (!e) return;
     if (e.type === 'move')  addLine(`e${i}m`, e.from?.x, e.from?.y, e.to?.x, e.to?.y);
     if (e.type === 'orbit') addOrbit(`e${i}o`, e, 1);
   });
 
-  // Currently-animating step
   if (animCur) {
     const p = animCur.progress ?? 0;
     if (animCur.type === 'move') {
@@ -194,8 +185,6 @@ const PREV_GRID_FULL   = ['1','2','3','4','5','6','7','8','9','*','0','#'];
 function PictoPreview({ seq, size = 40, animate = false }) {
   const [elems,   setElems]   = useState([]);
   const [animCur, setAnimCur] = useState(null);
-  // FIX: isMounted prevents setState after unmount (avoids React 17 warnings
-  //      and potential state corruption in React 19 strict mode)
   const isMounted = useRef(true);
   const rafRef    = useRef(null);
 
@@ -211,24 +200,17 @@ function PictoPreview({ seq, size = 40, animate = false }) {
   }, []);
 
   useEffect(() => {
-    // Cancel any running animation
     if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
-
     if (!seq) { setElems([]); setAnimCur(null); return; }
-
     const steps = parseSteps(seq, PREV_BPOS, PREV_BW);
-
     if (!animate || steps.length === 0) {
       setElems(steps);
       setAnimCur(null);
       return;
     }
-
-    // Animated draw
     if (isMounted.current) { setElems([]); setAnimCur(null); }
     let si = 0, startTs = null;
     const SPEED = 280;
-
     function frame(ts) {
       if (!isMounted.current) return;
       try {
@@ -236,15 +218,9 @@ function PictoPreview({ seq, size = 40, animate = false }) {
         const t  = Math.min((ts - startTs) / SPEED, 1);
         const et = easeInOut(t);
         const step = steps[si];
-        if (!step) { rafRef.current = null; return; } // safety guard
-
+        if (!step) { rafRef.current = null; return; }
         setAnimCur({ ...step, progress: et });
-
-        if (t < 1) {
-          rafRef.current = requestAnimationFrame(frame);
-          return;
-        }
-        // Step complete
+        if (t < 1) { rafRef.current = requestAnimationFrame(frame); return; }
         setElems(prev => [...prev, { ...step }]);
         setAnimCur(null);
         si++;
@@ -264,7 +240,6 @@ function PictoPreview({ seq, size = 40, animate = false }) {
   }, [seq, animate]);
 
   if (!seq) return null;
-
   const has4     = /[*0#]/.test(seq);
   const vH       = has4 ? 56 : 42;
   const gridKeys = has4 ? PREV_GRID_FULL : PREV_GRID_3X3;
@@ -277,9 +252,7 @@ function PictoPreview({ seq, size = 40, animate = false }) {
       className="picto-preview-svg">
       {gridKeys.map(k => {
         const p = PREV_BPOS[k];
-        return p
-          ? <circle key={k} cx={p.x} cy={p.y} r="1.8" fill="#1e2535" />
-          : null;
+        return p ? <circle key={k} cx={p.x} cy={p.y} r="1.8" fill="#1e2535" /> : null;
       })}
       {renderElems(elems, animCur, '#7ee8a2', false)}
       {firstPos && (
@@ -307,7 +280,8 @@ function ShapePreview({ seq }) {
 }
 
 // ── Keypad ────────────────────────────────────────────────────────────────────
-function Keypad({ sz, layers = [], onTap, dim, firstDigit }) {
+// blind=true hides digit labels with a CSS opacity fade (buttons stay in place)
+function Keypad({ sz, layers = [], onTap, dim, firstDigit, blind }) {
   if (!sz) return null;
   const { bw, bh, gap, pw, ph, bpos } = sz;
 
@@ -344,7 +318,9 @@ function Keypad({ sz, layers = [], onTap, dim, firstDigit }) {
           <button key={key} className={btnCls(key)}
             style={{ width: bw, height: bh }}
             onClick={() => onTap?.(key)}>
-            {key}
+            <span style={{ opacity: blind ? 0 : 1, transition: 'opacity 0.25s' }}>
+              {key}
+            </span>
           </button>
         ))}
       </div>
@@ -381,28 +357,34 @@ function Keypad({ sz, layers = [], onTap, dim, firstDigit }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 export default function NumberPad() {
-  const [gameMode,   setGameMode]   = useState('practice');
-  const [activeId,   setActiveId]   = useState(SHAPES[0].id);
-  const [targetSeq,  setTargetSeq]  = useState(SHAPES[0].seq);
-  const [phase,      setPhase]      = useState('idle');
-  const [userInput,  setUserInput]  = useState('');
-  const [feedback,   setFeedback]   = useState(null);
-  const [score,      setScore]      = useState({ ok: 0, total: 0 });
-  const [showWatch,  setShowWatch]  = useState(true);
-  const [maxLen,     setMaxLen]     = useState(5);
-  const [resultFade, setResultFade] = useState(false);
-  const [history,    setHistory]    = useState([]);
-  const [roundKey,   setRoundKey]   = useState(1);
+  const [gameMode,    setGameMode]    = useState('practice');
+  const [activeId,    setActiveId]    = useState(SHAPES[0].id);
+  const [targetSeq,   setTargetSeq]   = useState(SHAPES[0].seq);
+  const [phase,       setPhase]       = useState('idle');
+  const [userInput,   setUserInput]   = useState('');
+  const [feedback,    setFeedback]    = useState(null);
+  const [score,       setScore]       = useState({ ok: 0, total: 0 });
+  const [showWatch,   setShowWatch]   = useState(true);
+  const [maxLen,      setMaxLen]      = useState(5);
+  const [resultFade,  setResultFade]  = useState(false);
+  const [history,     setHistory]     = useState([]);
+  const [roundKey,    setRoundKey]    = useState(1);
+
+  // ── Feature 1: Blind mode ──
+  const [blindMode,   setBlindMode]   = useState(false);
+
+  // ── Feature 2: Path hide timer ──
+  const [hideDelay,   setHideDelay]   = useState(null); // null | ms (1000/3000/5000/10000)
+  const [pathVisible, setPathVisible] = useState(true);
+  const [countdown,   setCountdown]   = useState(null); // seconds remaining
 
   // Demo animation state
   const [demoElems,   setDemoElems]   = useState([]);
   const [demoAnimCur, setDemoAnimCur] = useState(null);
   const [demoLit,     setDemoLit]     = useState(new Set());
 
-  // Input pad geometry changes with mode
   const activeInputSz = gameMode === 'game' ? GAME_INPUT : INPUT;
 
-  // User path derived from input string (no separate state)
   const userElems = useMemo(
     () => parseSteps(userInput, activeInputSz.bpos, activeInputSz.bw),
     [userInput, activeInputSz]
@@ -412,11 +394,17 @@ export default function NumberPad() {
     [userInput]
   );
 
-  // FIX: track ALL timer IDs so every timeout can be cleared on unmount
   const animId     = useRef(null);
   const autoRef    = useRef({ t1: null, t2: null });
-  const roundTimer = useRef(null); // the 80 ms "start demo" timeout
+  const roundTimer = useRef(null);
   const newRound   = useRef(null);
+
+  // Hide-timer refs
+  const hideTimerRef         = useRef(null);
+  const countdownIntervalRef = useRef(null);
+  const hideDelayRef         = useRef(null);
+  const startHideTimerRef    = useRef(null);
+  hideDelayRef.current       = hideDelay;
 
   // Cleanup everything on unmount
   useEffect(() => {
@@ -425,6 +413,8 @@ export default function NumberPad() {
       clearTimeout(autoRef.current.t1);
       clearTimeout(autoRef.current.t2);
       clearTimeout(roundTimer.current);
+      clearTimeout(hideTimerRef.current);
+      clearInterval(countdownIntervalRef.current);
     };
   }, []);
 
@@ -467,8 +457,7 @@ export default function NumberPad() {
         const t    = Math.min((ts - startTs) / SPEED, 1);
         const et   = easeInOut(t);
         const step = steps[si];
-
-        if (!step) { animId.current = null; return; } // safety guard
+        if (!step) { animId.current = null; return; }
 
         setDemoAnimCur({ ...step, progress: et });
 
@@ -524,12 +513,45 @@ export default function NumberPad() {
     autoRef.current = { t1: null, t2: null };
   }
 
+  // ── Hide-timer helpers (Feature 2) ───────────────────────────────────────
+  function clearHideTimer() {
+    clearTimeout(hideTimerRef.current);
+    clearInterval(countdownIntervalRef.current);
+    hideTimerRef.current = null;
+    countdownIntervalRef.current = null;
+  }
+
+  function startHideTimer() {
+    clearHideTimer();
+    const delay = hideDelayRef.current;
+    if (!delay) return;
+    const secs = delay / 1000;
+    setPathVisible(true);
+    setCountdown(secs);
+    countdownIntervalRef.current = setInterval(() => {
+      setCountdown(prev => {
+        if (prev === null || prev <= 1) {
+          clearInterval(countdownIntervalRef.current);
+          return null;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    hideTimerRef.current = setTimeout(() => {
+      setPathVisible(false);
+      setCountdown(null);
+    }, delay);
+  }
+  startHideTimerRef.current = startHideTimer;
+
   function startNewRound() {
-    // Reset ALL user-input state before the new round begins
     setUserInput('');
     setFeedback(null);
     setResultFade(false);
-    clearDemo(); // stop any lingering watch animation
+    setPathVisible(true);
+    clearHideTimer();
+    setCountdown(null);
+    clearDemo();
 
     const seq = randSeq(maxLen);
     setTargetSeq(seq);
@@ -537,7 +559,12 @@ export default function NumberPad() {
     setRoundKey(k => k + 1);
     setPhase('watching');
     roundTimer.current = setTimeout(
-      () => { runDemoAnim(seq, GAME_WATCH, () => setPhase('playing')); },
+      () => {
+        runDemoAnim(seq, GAME_WATCH, () => {
+          setPhase('playing');
+          startHideTimerRef.current?.();
+        });
+      },
       80
     );
   }
@@ -548,7 +575,7 @@ export default function NumberPad() {
     setGameMode('game');
     setHistory([]);
     setScore({ ok: 0, total: 0 });
-    startNewRound(); // startNewRound resets all user/demo state itself
+    startNewRound();
   }
 
   function launchPractice() {
@@ -581,8 +608,14 @@ export default function NumberPad() {
     clearUser();
     setFeedback(null);
     setResultFade(false);
+    setPathVisible(true);
+    clearHideTimer();
+    setCountdown(null);
     setPhase('watching');
-    runDemoAnim(targetSeq, sz ?? INPUT, () => setPhase('playing'));
+    runDemoAnim(targetSeq, sz ?? INPUT, () => {
+      setPhase('playing');
+      startHideTimerRef.current?.();
+    });
   }
 
   function handleKeyTap(key) {
@@ -593,6 +626,9 @@ export default function NumberPad() {
       const isOk = next === targetSeq;
       setFeedback(isOk ? 'correct' : 'wrong');
       setPhase('result');
+      setPathVisible(true); // always reveal path during result
+      clearHideTimer();
+      setCountdown(null);
       setScore(s => ({ ok: s.ok + (isOk ? 1 : 0), total: s.total + 1 }));
       if (gameMode === 'game') {
         setHistory(prev =>
@@ -624,7 +660,7 @@ export default function NumberPad() {
       {/* ════ GAME MODE ════ */}
       {gameMode === 'game' && (
         <>
-          {/* Score + length picker */}
+          {/* Score + length picker + blind toggle */}
           <div className="game-topbar">
             <div className="test-score" style={{ alignSelf: 'center' }}>
               {score.ok} / {score.total}
@@ -637,20 +673,46 @@ export default function NumberPad() {
                   onClick={() => setMaxLen(n)}>{n}</button>
               ))}
             </div>
+            <button
+              className={`blind-toggle-btn ${blindMode ? 'blind-on' : ''}`}
+              onClick={() => setBlindMode(v => !v)}
+            >
+              {blindMode ? '🔢 Show' : '🔲 Hide'}
+            </button>
           </div>
 
-          {/* PATH display with animated picto */}
+          {/* Hide-path timer row */}
+          <div className="hide-delay-row">
+            <span className="maxlen-label">Hide path</span>
+            {[null, 1, 3, 5, 10].map(s => (
+              <button key={s ?? 'off'}
+                className={`maxlen-btn ${hideDelay === (s ? s * 1000 : null) ? 'maxlen-active' : ''}`}
+                onClick={() => setHideDelay(s ? s * 1000 : null)}>
+                {s ? `${s}s` : 'Off'}
+              </button>
+            ))}
+          </div>
+
+          {/* PATH display */}
           <div className="numpad-target">
             <PictoPreview key={roundKey} seq={targetSeq} size={42} animate />
             <span className="numpad-target-label">Path:</span>
             <span className="numpad-target-seq">
               {(targetSeq || '').split('').map((d, i) => {
                 let cls = 'numpad-tdigit';
-                if (userInput[i]) cls += userInput[i] === d ? ' td-ok' : ' td-err';
-                return <span key={i} className={cls}>{d}</span>;
+                if (pathVisible && userInput[i])
+                  cls += userInput[i] === d ? ' td-ok' : ' td-err';
+                return (
+                  <span key={i} className={cls}>
+                    {pathVisible ? d : '—'}
+                  </span>
+                );
               })}
             </span>
             <span className="seq-len-badge">{targetSeq.length}d</span>
+            {countdown !== null && (
+              <span className="path-countdown">{countdown}s</span>
+            )}
           </div>
 
           {/* Result flash */}
@@ -667,7 +729,10 @@ export default function NumberPad() {
               {phase === 'watching' && (
                 <span className="phase-watch">◆ Memorise the path…</span>
               )}
-              {phase === 'playing' && (
+              {phase === 'playing' && !pathVisible && (
+                <span className="phase-play">▶ Recall from memory!</span>
+              )}
+              {phase === 'playing' && pathVisible && (
                 <span className="phase-play">▶ Tap the path on the right</span>
               )}
             </div>
@@ -688,16 +753,19 @@ export default function NumberPad() {
               <div className={`watch-collapsible ${showWatch ? '' : 'collapsed'}`}>
                 <Keypad
                   sz={GAME_WATCH}
-                  layers={[{
+                  layers={pathVisible ? [{
                     elems:     demoElems,
                     animCur:   demoAnimCur,
                     lineColor: '#7ee8a2',
                     monoColor: false,
                     lit:       demoLit,
-                  }]}
+                  }] : []}
                   dim
+                  blind={blindMode}
                   firstDigit={
-                    (demoElems.length > 0 || demoAnimCur) ? targetSeq[0] : null
+                    pathVisible && (demoElems.length > 0 || demoAnimCur)
+                      ? targetSeq[0]
+                      : null
                   }
                 />
               </div>
@@ -723,6 +791,7 @@ export default function NumberPad() {
                   lit:       userLit,
                 }]}
                 onTap={handleKeyTap}
+                blind={blindMode}
                 firstDigit={userInput.length > 0 ? userInput[0] : null}
               />
             </div>
