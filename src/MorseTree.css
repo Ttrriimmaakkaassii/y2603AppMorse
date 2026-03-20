@@ -85,7 +85,7 @@
   transition: stroke 0.15s;
 }
 .t-edge.e-dot  { stroke: #7ee8a2; stroke-width: 2; }
-.t-edge.e-dash { stroke: #60a5fa; stroke-width: 2; }
+.t-edge.e-dash { stroke: #f87171; stroke-width: 2; }
 
 /* ── Nodes ── */
 .t-node {

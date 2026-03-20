@@ -298,6 +298,92 @@ export function startKeyTone() {
   };
 }
 
+// Configurable playback: speed (5-100, default 36 = 1×), pitch Hz, volume 0-100.
+// Callbacks: onFlash(isOn) for light sync, onVibrate(durationMs) for haptic sync.
+// startIndex: letter index to start from (for resume-after-pause).
+export function playMorseConfigured(letters, settings, onEnd, onEvent) {
+  const {
+    speed = 36, pitch = 550, volume = 75,
+    soundOn = true, onFlash, onVibrate, startIndex = 0,
+  } = settings;
+
+  const scale   = 36 / Math.max(5, speed);
+  const dotDur  = Math.round(80  * scale);
+  const dashDur = Math.round(240 * scale);
+  const symGap  = Math.round(80  * scale);
+  const letGap  = Math.round(240 * scale);
+  const wordGap = Math.round(560 * scale);
+  const vol     = soundOn ? Math.max(0, Math.min(1, volume / 100)) * 0.9 : 0;
+
+  const ctx      = new (window.AudioContext || window.webkitAudioContext)();
+  const ctxStart = ctx.currentTime + 0.1;
+  const START_MS = 100;
+
+  let timeMs  = 0;
+  let stopped = false;
+  const timers = [];
+  const fire = (fn, ms) => timers.push(setTimeout(() => { if (!stopped) fn(); }, ms));
+
+  const subset = letters.slice(startIndex);
+
+  for (let li = 0; li < subset.length; li++) {
+    const { char, morse } = subset[li];
+    const realIndex = li + startIndex;
+
+    if (morse === '/') { timeMs += wordGap; continue; }
+    if (!morse) continue;
+
+    const letterStartMs = timeMs;
+    fire(() => onEvent?.({ type: 'letter', index: realIndex, char, morse }), START_MS + letterStartMs);
+
+    for (let si = 0; si < morse.length; si++) {
+      const sym = morse[si];
+      const dur = sym === '.' ? dotDur : dashDur;
+      const symStartMs = timeMs;
+
+      if (vol > 0) {
+        const osc  = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.frequency.value = pitch; osc.type = 'sine';
+        const s = ctxStart + symStartMs / 1000;
+        const d = dur / 1000;
+        gain.gain.setValueAtTime(0, s);
+        gain.gain.linearRampToValueAtTime(vol, s + 0.005);
+        gain.gain.setValueAtTime(vol, s + d - 0.005);
+        gain.gain.linearRampToValueAtTime(0, s + d);
+        osc.start(s); osc.stop(s + d + 0.01);
+      }
+
+      const capturedDur = dur;
+      fire(() => {
+        onFlash?.(true);
+        onVibrate?.(capturedDur);
+        onEvent?.({ type: 'symbol', letterIndex: realIndex, symbolIndex: si });
+      }, START_MS + symStartMs);
+      fire(() => onFlash?.(false), START_MS + symStartMs + dur);
+
+      timeMs += dur + symGap;
+    }
+
+    if (li < subset.length - 1) {
+      const next = subset[li + 1];
+      if (next.morse && next.morse !== '/') timeMs += letGap - symGap;
+    }
+  }
+
+  fire(() => { ctx.close(); onEnd?.(); onEvent?.({ type: 'done' }); }, START_MS + timeMs + 300);
+
+  return {
+    stop: () => {
+      stopped = true;
+      timers.forEach(clearTimeout);
+      ctx.close();
+      onFlash?.(false);
+    },
+  };
+}
+
 function audioBufferToWav(buffer) {
   const numChannels = 1;
   const sampleRate = buffer.sampleRate;
