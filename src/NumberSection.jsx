@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import NumberLearn from './NumberLearn';
-import NumberTest  from './NumberTest';
+import NumberPad   from './NumberPad';
 
 export default function NumberSection() {
   const [view, setView] = useState('learn');
@@ -15,16 +15,16 @@ export default function NumberSection() {
           123 Learn
         </button>
         <button
-          className={`mode-btn ${view === 'test' ? 'mode-active' : ''}`}
-          onClick={() => setView('test')}
+          className={`mode-btn ${view === 'pad' ? 'mode-active' : ''}`}
+          onClick={() => setView('pad')}
         >
-          · Tap Test
+          🔢 Keypad Game
         </button>
       </div>
 
       {view === 'learn'
         ? <NumberLearn key="learn" />
-        : <NumberTest  key="test"  />
+        : <NumberPad   key="pad"   />
       }
     </div>
   );
