@@ -136,10 +136,21 @@ function analyzeAudioBuffer(samples, sampleRate) {
 }
 
 // ── Tab 1: Manual ──────────────────────────────────────────────────────────
+const DASH_THRESHOLD_MS = 300;
+const MK_R    = 62;
+const MK_CIRC = 2 * Math.PI * MK_R;
+
 function ManualTab({ onAppend, onPreviewChange }) {
-  const curRef   = useRef('');
+  const curRef  = useRef('');
   const [cur, setCur] = useState('');
-  const timer    = useRef(null);
+  const timer   = useRef(null);
+
+  // Morse key state
+  const [keyDown,    setKeyDown]    = useState(false);
+  const [keyProg,    setKeyProg]    = useState(0); // 0..1 over DASH_THRESHOLD_MS
+  const pressRef   = useRef(0);
+  const ptrIdRef   = useRef(null);
+  const keyRafRef  = useRef(null);
 
   function commit() {
     clearTimeout(timer.current);
@@ -158,10 +169,56 @@ function ManualTab({ onAppend, onPreviewChange }) {
 
   function wordSpace() { commit(); onAppend({ char: ' ', morse: '' }); }
 
-  useEffect(() => () => clearTimeout(timer.current), []);
+  // ── Morse key pointer handlers ──
+  function onKeyDown(e) {
+    e.preventDefault();
+    if (ptrIdRef.current !== null) return;
+    ptrIdRef.current = e.pointerId;
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch {}
+    pressRef.current = performance.now();
+    setKeyDown(true);
+    setKeyProg(0);
+    function loop() {
+      const prog = Math.min(1, (performance.now() - pressRef.current) / DASH_THRESHOLD_MS);
+      setKeyProg(prog);
+      keyRafRef.current = requestAnimationFrame(loop);
+    }
+    keyRafRef.current = requestAnimationFrame(loop);
+  }
+
+  function onKeyUp(e) {
+    if (e.pointerId !== ptrIdRef.current) return;
+    ptrIdRef.current = null;
+    cancelAnimationFrame(keyRafRef.current);
+    const dur = performance.now() - pressRef.current;
+    setKeyDown(false);
+    setKeyProg(0);
+    addSym(dur >= DASH_THRESHOLD_MS ? '-' : '.');
+  }
+
+  function onKeyCancel(e) {
+    if (e.pointerId !== ptrIdRef.current) return;
+    ptrIdRef.current = null;
+    cancelAnimationFrame(keyRafRef.current);
+    setKeyDown(false);
+    setKeyProg(0);
+  }
+
+  useEffect(() => () => {
+    clearTimeout(timer.current);
+    cancelAnimationFrame(keyRafRef.current);
+  }, []);
+
+  // Ring visuals
+  const isDash     = keyProg >= 1;
+  const ringColor  = !keyDown ? '#1e2535' : isDash ? '#fb923c' : '#7ee8a2';
+  const dashOffset = MK_CIRC * (1 - keyProg);
+  const keySymbol  = keyDown ? (isDash ? '−' : '·') : '●';
+  const keyColor   = keyDown ? (isDash ? '#fb923c' : '#7ee8a2') : '#475569';
 
   return (
     <div className="rm-tab-body">
+      {/* Current symbol being built */}
       <div className="rm-cur-sym">
         {cur
           ? cur.split('').map((s, i) => (
@@ -171,12 +228,61 @@ function ManualTab({ onAppend, onPreviewChange }) {
         }
         {cur && <span className="rm-cur-preview"> = {decodeSym(cur)}</span>}
       </div>
+
+      {/* Quick-tap buttons */}
       <div className="rm-buttons">
         <button className="rm-btn rm-btn-dot"   onClick={() => addSym('.')}>·</button>
         <button className="rm-btn rm-btn-dash"  onClick={() => addSym('-')}>−</button>
         <button className="rm-btn rm-btn-space" onClick={wordSpace}>/ Word</button>
       </div>
+
       {cur && <div className="rm-auto-hint">auto-commit in 1.5 s — or tap / Word</div>}
+
+      {/* ── Morse Key ── */}
+      <div className="mk-divider"><span>— or use Morse Key —</span></div>
+
+      <div className="mk-wrap">
+        {/* Progress ring SVG */}
+        <svg className="mk-ring" viewBox="0 0 140 140" aria-hidden="true">
+          <circle cx="70" cy="70" r={MK_R} fill="none" stroke="#1a1a24" strokeWidth="5" />
+          <circle
+            cx="70" cy="70" r={MK_R}
+            fill="none"
+            stroke={ringColor}
+            strokeWidth="5"
+            strokeDasharray={MK_CIRC}
+            strokeDashoffset={dashOffset}
+            strokeLinecap="round"
+            transform="rotate(-90 70 70)"
+            style={{ transition: keyDown ? 'stroke 0.08s' : 'stroke 0.2s, stroke-dashoffset 0.05s' }}
+          />
+        </svg>
+
+        {/* The key button */}
+        <button
+          className={`mk-btn${keyDown ? ' mk-btn-on' : ''}${keyDown && isDash ? ' mk-btn-dash-glow' : ''}`}
+          onPointerDown={onKeyDown}
+          onPointerUp={onKeyUp}
+          onPointerCancel={onKeyCancel}
+          onContextMenu={e => e.preventDefault()}
+          style={{ touchAction: 'none', '--key-color': keyColor }}
+          aria-label="Morse key — tap for dot, hold for dash"
+        >
+          <span className="mk-sym">{keySymbol}</span>
+          <span className="mk-lbl">KEY</span>
+        </button>
+      </div>
+
+      {/* Legend */}
+      <div className="mk-legend">
+        <span className="mk-leg-item">
+          <span className="mk-leg-dot">·</span> tap &lt;300ms
+        </span>
+        <span className="mk-leg-sep">|</span>
+        <span className="mk-leg-item">
+          <span className="mk-leg-dash">−</span> hold ≥300ms
+        </span>
+      </div>
     </div>
   );
 }
