@@ -408,7 +408,7 @@ export default function ConverterSection() {
       {/* ══ MORSE → TEXT ══ */}
       <section className="card">
         <label>Morse → Text</label>
-        <ReverseMorse />
+        <ReverseMorse soundOn={soundOn} pitch={pitch} volume={volume} speed={speed} />
       </section>
 
     </div>

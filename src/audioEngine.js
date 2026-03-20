@@ -298,6 +298,70 @@ export function startKeyTone() {
   };
 }
 
+// ── Shared AudioContext singleton for manual key feedback ──────────────────
+// Re-created if closed; resumed on every call so mobile autoplay works.
+let _keyCtx = null;
+
+function getKeyCtx() {
+  if (!_keyCtx || _keyCtx.state === 'closed') {
+    _keyCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (_keyCtx.state === 'suspended') {
+    _keyCtx.resume().catch(() => {});
+  }
+  return _keyCtx;
+}
+
+// Live key tone with configurable pitch/volume.
+// Returns { stop } — call stop() on key release to cut cleanly.
+export function startKeyToneConfigured(pitch = 550, volume = 75) {
+  const ctx  = getKeyCtx();
+  const osc  = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.frequency.value = pitch;
+  osc.type = 'sine';
+  const vol = Math.max(0, Math.min(1, volume / 100)) * 0.8;
+  const now = ctx.currentTime;
+  gain.gain.setValueAtTime(0, now);
+  gain.gain.linearRampToValueAtTime(vol, now + 0.005); // 5 ms fade-in
+  osc.start(now);
+  let stopped = false;
+  return {
+    stop: () => {
+      if (stopped) return;
+      stopped = true;
+      const t = ctx.currentTime;
+      gain.gain.setValueAtTime(gain.gain.value, t);
+      gain.gain.linearRampToValueAtTime(0, t + 0.005); // 5 ms fade-out
+      osc.stop(t + 0.01);
+    },
+  };
+}
+
+// Single beep for dot/dash button taps — duration driven by speed setting.
+export function playSymbolBeep(isDash, pitch = 550, volume = 75, speed = 36) {
+  const scale = 36 / Math.max(5, speed);
+  const durMs = isDash ? Math.round(240 * scale) : Math.round(80 * scale);
+  const ctx   = getKeyCtx();
+  const osc   = ctx.createOscillator();
+  const gain  = ctx.createGain();
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.frequency.value = pitch;
+  osc.type = 'sine';
+  const vol = Math.max(0, Math.min(1, volume / 100)) * 0.8;
+  const now = ctx.currentTime;
+  const d   = durMs / 1000;
+  gain.gain.setValueAtTime(0, now);
+  gain.gain.linearRampToValueAtTime(vol, now + 0.005);
+  gain.gain.setValueAtTime(vol, now + d - 0.005);
+  gain.gain.linearRampToValueAtTime(0, now + d);
+  osc.start(now);
+  osc.stop(now + d + 0.01);
+}
+
 // Configurable playback: speed (5-100, default 36 = 1×), pitch Hz, volume 0-100.
 // Callbacks: onFlash(isOn) for light sync, onVibrate(durationMs) for haptic sync.
 // startIndex: letter index to start from (for resume-after-pause).

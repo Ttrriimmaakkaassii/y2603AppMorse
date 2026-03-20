@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { MORSE_CODE } from './morseCode';
-import { playMorse }  from './audioEngine';
+import { playMorse, startKeyToneConfigured, playSymbolBeep } from './audioEngine';
 
 // ── Reverse lookup: morse pattern → character ──────────────────────────────
 const REVERSE = Object.fromEntries(
@@ -140,7 +140,7 @@ const DASH_THRESHOLD_MS = 300;
 const MK_R    = 62;
 const MK_CIRC = 2 * Math.PI * MK_R;
 
-function ManualTab({ onAppend, onPreviewChange }) {
+function ManualTab({ onAppend, onPreviewChange, soundOn, pitch, volume, speed }) {
   const curRef  = useRef('');
   const [cur, setCur] = useState('');
   const timer   = useRef(null);
@@ -151,6 +151,17 @@ function ManualTab({ onAppend, onPreviewChange }) {
   const pressRef   = useRef(0);
   const ptrIdRef   = useRef(null);
   const keyRafRef  = useRef(null);
+  const toneRef    = useRef(null); // live key tone handle
+
+  // Keep sound settings accessible in callbacks without stale closure issues
+  const soundRef  = useRef(soundOn);
+  const pitchRef  = useRef(pitch);
+  const volRef    = useRef(volume);
+  const speedRef  = useRef(speed);
+  soundRef.current = soundOn;
+  pitchRef.current = pitch;
+  volRef.current   = volume;
+  speedRef.current = speed;
 
   function commit() {
     clearTimeout(timer.current);
@@ -160,7 +171,11 @@ function ManualTab({ onAppend, onPreviewChange }) {
     curRef.current = ''; setCur(''); onPreviewChange('');
   }
 
-  function addSym(sym) {
+  // playBeep=true for button taps; false when key already played the tone live
+  function addSym(sym, playBeep = true) {
+    if (playBeep && soundRef.current) {
+      playSymbolBeep(sym === '-', pitchRef.current, volRef.current, speedRef.current);
+    }
     clearTimeout(timer.current);
     const next = curRef.current + sym;
     curRef.current = next; setCur(next); onPreviewChange(next);
@@ -178,6 +193,10 @@ function ManualTab({ onAppend, onPreviewChange }) {
     pressRef.current = performance.now();
     setKeyDown(true);
     setKeyProg(0);
+    // Start live tone immediately on press
+    if (soundRef.current) {
+      toneRef.current = startKeyToneConfigured(pitchRef.current, volRef.current);
+    }
     function loop() {
       const prog = Math.min(1, (performance.now() - pressRef.current) / DASH_THRESHOLD_MS);
       setKeyProg(prog);
@@ -190,16 +209,21 @@ function ManualTab({ onAppend, onPreviewChange }) {
     if (e.pointerId !== ptrIdRef.current) return;
     ptrIdRef.current = null;
     cancelAnimationFrame(keyRafRef.current);
+    // Stop tone first (clean fade-out) before measuring duration
+    toneRef.current?.stop();
+    toneRef.current = null;
     const dur = performance.now() - pressRef.current;
     setKeyDown(false);
     setKeyProg(0);
-    addSym(dur >= DASH_THRESHOLD_MS ? '-' : '.');
+    addSym(dur >= DASH_THRESHOLD_MS ? '-' : '.', false); // tone already played live
   }
 
   function onKeyCancel(e) {
     if (e.pointerId !== ptrIdRef.current) return;
     ptrIdRef.current = null;
     cancelAnimationFrame(keyRafRef.current);
+    toneRef.current?.stop();
+    toneRef.current = null;
     setKeyDown(false);
     setKeyProg(0);
   }
@@ -207,6 +231,7 @@ function ManualTab({ onAppend, onPreviewChange }) {
   useEffect(() => () => {
     clearTimeout(timer.current);
     cancelAnimationFrame(keyRafRef.current);
+    toneRef.current?.stop(); // clean up any hanging tone on unmount
   }, []);
 
   // Ring visuals
@@ -635,7 +660,7 @@ function CameraTab({ onAppend }) {
 }
 
 // ── Main ReverseMorse component ────────────────────────────────────────────
-export default function ReverseMorse() {
+export default function ReverseMorse({ soundOn = true, pitch = 550, volume = 75, speed = 36 }) {
   const [activeTab, setActiveTab] = useState('manual');
   const [decoded,   setDecoded]   = useState('');
   const [preview,   setPreview]   = useState('');
@@ -719,6 +744,10 @@ export default function ReverseMorse() {
           <ManualTab
             onAppend={append}
             onPreviewChange={setPreview}
+            soundOn={soundOn}
+            pitch={pitch}
+            volume={volume}
+            speed={speed}
           />
         )}
         {activeTab === 'audio' && (
