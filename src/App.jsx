@@ -3,6 +3,7 @@ import ConverterSection from './ConverterSection';
 import LearnSection from './LearnSection';
 import TestSection from './TestSection';
 import NumberSection from './NumberSection';
+import BrainSection from './BrainSection';
 import './App.css';
 
 const TABS = [
@@ -10,6 +11,7 @@ const TABS = [
   { id: 'learn',     label: 'ABC Learn' },
   { id: 'test',      label: '· − Test Me' },
   { id: 'numbers',   label: '🔢 Numbers' },
+  { id: 'brain',     label: '🧠 Brain' },
 ];
 
 export default function App() {
@@ -39,6 +41,7 @@ export default function App() {
         {tab === 'learn'     && <LearnSection />}
         {tab === 'test'      && <TestSection />}
         {tab === 'numbers'   && <NumberSection />}
+        {tab === 'brain'     && <BrainSection />}
       </main>
 
       <footer className="app-footer">
