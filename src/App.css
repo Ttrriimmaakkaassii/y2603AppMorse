@@ -250,12 +250,18 @@ textarea::placeholder { color: #334155; }
   flex-direction: column;
   align-items: center;
   gap: 5px;
-  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s, transform 0.15s;
+}
+.alpha-card:hover:not(.alpha-active) {
+  border-color: #3d5a4a;
+  background: #141420;
 }
 .alpha-card.alpha-active {
   border-color: #7ee8a2;
   background: rgba(126, 232, 162, 0.07);
   box-shadow: 0 0 18px rgba(126, 232, 162, 0.22);
+  transform: scale(1.05);
 }
 .alpha-letter {
   font-size: 1.3rem;
@@ -301,6 +307,15 @@ textarea::placeholder { color: #334155; }
   letter-spacing: 1px;
 }
 .alpha-card.alpha-active .alpha-morse { color: #5d9e7a; }
+
+/* Brief pulse when a letter is typed into the text input */
+@keyframes alpha-pulse-kf {
+  0%   { border-color: #5eead4; box-shadow: 0 0 16px rgba(94,234,212,0.55); transform: scale(1.08); background: rgba(94,234,212,0.1); }
+  100% { border-color: #2e3048; box-shadow: none; transform: scale(1); background: #0f0f14; }
+}
+.alpha-pulse {
+  animation: alpha-pulse-kf 0.38s ease-out forwards;
+}
 
 /* ── Learn Section ── */
 .learn-section { width: 100%; }

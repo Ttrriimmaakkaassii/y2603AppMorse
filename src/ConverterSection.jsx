@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react';
-import { textToMorseDetailed } from './morseCode';
+import { useState, useRef, useEffect } from 'react';
+import { textToMorseDetailed, MORSE_CODE } from './morseCode';
 import { playMorseConfigured, renderMorseToWav } from './audioEngine';
 import MorseTree     from './MorseTree';
 import AlphabetPanel from './AlphabetPanel';
@@ -41,6 +41,14 @@ export default function ConverterSection() {
   const repeatOnRef      = useRef(false);
   const torchTrackRef    = useRef(null);
 
+  const tapPlayerRef  = useRef(null);
+  const pulseTimerRef = useRef(null);
+  const [pulseChar, setPulseChar] = useState(null);
+
+  // Stable refs for use inside useEffect keyboard handler
+  const playStateRef = useRef('idle');
+  const textRef      = useRef('');
+
   // Keep refs in sync with state on every render
   lettersRef.current   = letters;
   speedRef.current     = speed;
@@ -51,9 +59,19 @@ export default function ConverterSection() {
   screenOnRef.current  = screenOn;
   vibrateOnRef.current = vibrateOn;
   repeatOnRef.current  = repeatOn;
+  playStateRef.current = playState;
+  textRef.current      = text;
 
   function handleInput(e) {
     const val = e.target.value;
+    if (val.length > text.length) {
+      const lastChar = val[val.length - 1].toUpperCase();
+      if (/^[A-Z]$/.test(lastChar)) {
+        clearTimeout(pulseTimerRef.current);
+        setPulseChar(lastChar);
+        pulseTimerRef.current = setTimeout(() => setPulseChar(null), 380);
+      }
+    }
     setText(val);
     setLetters(textToMorseDetailed(val));
     if (playState !== 'idle') stopAll();
@@ -137,6 +155,8 @@ export default function ConverterSection() {
 
   function stopAll() {
     playerRef.current?.stop();
+    tapPlayerRef.current?.stop();
+    tapPlayerRef.current = null;
     setPlayState('idle');
     setActiveLetter(null);
     setCurrentStep(0);
@@ -195,6 +215,58 @@ export default function ConverterSection() {
     } catch { /* cancelled or not supported */ }
   }
 
+  // ── Letter tap / keyboard playback ─────────────────────────────────────────
+  function handleLetterTap(letter) {
+    if (playState === 'playing') return; // don't interrupt main playback
+    tapPlayerRef.current?.stop();
+    const morse = MORSE_CODE[letter.toUpperCase()];
+    if (!morse) return;
+    const char = letter.toUpperCase();
+    setActiveLetter({ char, morse, index: -1 });
+    setCurrentStep(0);
+    tapPlayerRef.current = playMorseConfigured(
+      [{ char, morse }],
+      { speed, pitch, volume, soundOn },
+      () => setTimeout(() => { setActiveLetter(null); setCurrentStep(0); }, 400),
+      (ev) => { if (ev.type === 'symbol') setCurrentStep(ev.symbolIndex + 1); },
+    );
+  }
+
+  // Physical keyboard: typing A-Z outside textarea adds char + plays letter
+  useEffect(() => {
+    function handleKey(e) {
+      if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
+      if (e.repeat) return;
+      const letter = e.key.toUpperCase();
+      if (!/^[A-Z]$/.test(letter)) return;
+      if (playStateRef.current !== 'idle') return;
+      const newText = textRef.current + e.key;
+      setText(newText);
+      setLetters(textToMorseDetailed(newText));
+      clearTimeout(pulseTimerRef.current);
+      setPulseChar(letter);
+      pulseTimerRef.current = setTimeout(() => setPulseChar(null), 380);
+      tapPlayerRef.current?.stop();
+      const morse = MORSE_CODE[letter];
+      if (!morse) return;
+      setActiveLetter({ char: letter, morse, index: -1 });
+      setCurrentStep(0);
+      tapPlayerRef.current = playMorseConfigured(
+        [{ char: letter, morse }],
+        {
+          speed:   speedRef.current,
+          pitch:   pitchRef.current,
+          volume:  volumeRef.current,
+          soundOn: soundOnRef.current,
+        },
+        () => setTimeout(() => { setActiveLetter(null); setCurrentStep(0); }, 400),
+        (ev) => { if (ev.type === 'symbol') setCurrentStep(ev.symbolIndex + 1); },
+      );
+    }
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, []); // empty deps — all mutable values read via refs
+
   // ── Derived ────────────────────────────────────────────────────────────────
   const playing = playState === 'playing';
   const hasText = letters.length > 0;
@@ -245,7 +317,7 @@ export default function ConverterSection() {
         </section>
       )}
 
-      {playing && activeLetter && (
+      {activeLetter && (
         <section className="card letter-viz-card">
           <div className="letter-viz">
             <div className="lv-char">{activeLetter.char}</div>
@@ -264,12 +336,10 @@ export default function ConverterSection() {
         </section>
       )}
 
-      {hasText && (
-        <section className="card">
-          <label>Visual Alphabet — lights follow playback</label>
-          <AlphabetPanel activeLetter={activeLetter} currentStep={currentStep} />
-        </section>
-      )}
+      <section className="card">
+        <label>Visual Alphabet — tap any card to hear it</label>
+        <AlphabetPanel activeLetter={activeLetter} currentStep={currentStep} onTap={handleLetterTap} pulseChar={pulseChar} />
+      </section>
 
       <section className="card tree-card">
         <label>Morse Flowchart</label>

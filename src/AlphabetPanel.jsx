@@ -2,18 +2,23 @@ import { MORSE_CODE } from './morseCode';
 
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
-export default function AlphabetPanel({ activeLetter, currentStep }) {
+export default function AlphabetPanel({ activeLetter, currentStep, onTap, pulseChar }) {
   return (
     <div className="alphabet-panel">
       {ALPHABET.map(letter => {
         const morse = MORSE_CODE[letter];
         const isActive = activeLetter?.char === letter;
+        const isPulse  = letter === pulseChar;
         return (
-          <div key={letter} className={`alpha-card ${isActive ? 'alpha-active' : ''}`}>
+          <div
+            key={letter}
+            className={`alpha-card ${isActive ? 'alpha-active' : ''} ${isPulse ? 'alpha-pulse' : ''}`}
+            onClick={() => onTap?.(letter)}
+          >
             <div className="alpha-letter">{letter}</div>
             <div className="alpha-lights">
               {morse.split('').map((sym, si) => {
-                const isOn  = isActive && si === currentStep - 1;
+                const isOn   = isActive && si === currentStep - 1;
                 const isDone = isActive && si < currentStep - 1;
                 return (
                   <span
